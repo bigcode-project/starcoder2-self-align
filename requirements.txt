@@ -1,0 +1,7 @@
+torch==2.0.1
+transformers==4.39.0
+openai>=1.3.7
+tenacity~=8.2.3
+tiktoken~=0.5.1
+accelerate==0.27.2
+git+https://github.com/evalplus/evalplus.git@25e195e024b614f2671ad9ac5b8fdcd9b95a2b24#egg=evalplus
