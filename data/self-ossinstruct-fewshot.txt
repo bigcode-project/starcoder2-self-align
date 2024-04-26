@@ -1,0 +1,1633 @@
+### System: I->R
+Provide the best response to a given instruction. Follow the following steps to craft your response:
+1. reason about the given instruction
+2. provide a high-quality solution
+3. offer a concise explanation
+4. write assertions and **invoke them** to verify the correctness your solution
+
+### System: C->I
+Create a set of independent code instructions that are original, different, diverse, and high-quality, where the properties control an instruction's category, language, concepts, and difficulty.
+
+### System: S->C
+Extract key programming concepts from a given code snippet collected from the open source repositories. Present the concepts as a comma separated list.
+
+### Example 1
+[Code]
+    value = int(round((value - prev) * 1e5))
+    value = ~(value << 1) if value < 0 else (value << 1)
+    chunks = _split_into_chunks(value)
+    return (chr(chunk + 63) for chunk in chunks)
+def _split_into_chunks(value):
+    while value >= 32:  # 2^5, while there are at least 5 bits
+        # first & with 2^5-1, zeros out all the bits other than the first five
+        # then OR with 0x20 if another bit chunk follows
+        yield (value & 31) | 0x20
+        value >>= 5
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: 5-bit chunk encoding with bitwise shifts, ASCII value manipulation, continuation bit signaling
+difficulty: medium
+
+[Instruction]
+Create a Python function to encode an integer into a sequence of encoded characters, where each character represents a 5-bit chunk of the integer. The ASCII value of each chunk character is formed by adding 63 to the 5-bit chunk's value. For all chunks except the last one, set the 6th bit to 1 to indicate continuation. Employ bitwise operations for this encoding process.
+
+[Solution]
+```python
+def encode_integer_to_chars(value: int) -> str:
+    if value == 0:
+        return chr(63)
+    encoded_chars = []
+    while value > 0:
+        chunk = (value & 31) + 63
+        value >>= 5
+        if value > 0:
+            chunk |= 32
+        encoded_chars.append(chr(chunk))
+    return ''.join(reversed(encoded_chars))
+
+# Tests
+assert encode_integer_to_chars(0) == chr(63)
+assert encode_integer_to_chars(1) == chr(63 + 1)
+assert encode_integer_to_chars(31) == chr(63 + 31)
+assert encode_integer_to_chars(int(0b1)) == chr(0b1 + 63)
+assert encode_integer_to_chars(int(0b1000001)) == chr(0b10 + 63) + chr(63 + 0b100001)
+```
+
+[Response]
+[Reasoning]
+To encode an integer into a sequence of encoded characters based on the specified criteria, let's follow these steps:
+
+1. Break down the integer into 5-bit chunks: Extract 5-bit chunks from the integer using using `& 31` (`0x1F`), because the binary representation of `31` (`11111`) has the last five bits set, which will effectively extract the 5 bits we are interested in. We start from the least significant bits (LSB).
+2. Set continuation bit: For all chunks except the last one, set the 6th bit to 1 using `| 32` (`0x20`) because the binary representation of `32` (`100000`) has the 6th bit set to 1. This indicates that there's another continuation chunk following.
+3. Shift right: Right-shift the value by 5 to process the next 5 bits.
+4. Convert to characters: Use `ord` and `chr` to convert each chunk (now effectively 6 bits due to the continuation bit) into a character by adding 63 to its value. This ensures that the character is within a printable ASCII range.
+5. Assembly: Assemble these characters into the final encoded string while maintaining the order of the chunks through `reversed`.
+
+[Implementation]
+Here's how you can implement this function:
+
+```python
+def encode_integer_to_chars(value: int) -> str:
+    # Base case for 0
+    if value == 0:
+        return chr(63)
+
+    encoded_chars = []
+    while value > 0:
+        # Extract the 5-bit chunk and add 63 to its value
+        chunk = (value & 31) + 63
+        value >>= 5
+        # If there's still more of the value left, set the continuation bit
+        if value > 0:
+            chunk |= 32
+        encoded_chars.append(chr(chunk))
+
+    # Reverse the list of characters to start with the least significant chunk
+    # and join them into a single string
+    return ''.join(reversed(encoded_chars))
+```
+
+[Explanation]
+This function processes the integer bit by bit in 5-bit chunks, applying bitwise operations to extract and manipulate these chunks, then converts each chunk into a character using the specified encoding scheme. This approach efficiently handles the encoding in a loop until all bits of the integer have been processed.
+
+Note that this function is designed for non-negative integers and does not support negative integers by default because negative numbers are represented in two's complement form, where the most significant bit (MSB) indicates the sign. In Python, right-shifting (`>>`) a negative integer preserves the sign bit, effectively making the never executed due to the `value > 0` condition. If you change it to `value != 0`, it will then lead to an infinite loop if the same encoding logic is applied to negative integers without modifications.
+
+[Tests]
+You can validate this function with a few test cases to ensure correctness:
+
+```python
+assert encode_integer_to_chars(0) == chr(63)
+assert encode_integer_to_chars(1) == chr(63 + 1)
+assert encode_integer_to_chars(31) == chr(63 + 31)
+assert encode_integer_to_chars(int(0b1)) == chr(0b1 + 63)
+assert encode_integer_to_chars(int(0b1000001)) == chr(0b10 + 63) + chr(63 + 0b100001)
+```
+
+These tests cover scenarios from zero to a number requiring more than one chunk, ensuring the function operates as expected.
+
+### Example 2
+[Code]
+def ceil_shift(n, b):
+    """Return ceil(n / 2**b) without performing any floating-point or division operations.
+    This is done by right-shifting n by b bits and incrementing the result by 1
+    if any '1' bits were shifted out.
+    """
+    if not isinstance(n, int) or not isinstance(b, int):
+        raise TypeError("unsupported operand type(s): %r and %r" % (type(n).__name__, type(b).__name__))
+    assert n >= 0 and b >= 0    # I haven't tested or even thought about negative values
+    mask = (1 << b) - 1
+    if n & mask:
+        return (n >> b) + 1
+    else:
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: bitwise operation for division, ceiling without division or float, input validation with assertions, non-negative integer checks
+difficulty: medium
+
+[Instruction]
+Develop a Python function `ceil_divide_without_div` that computes the ceiling of `n / 2**b` without using division, floating-point operations, built-in functions like `math.ceil`, or converting it into computing the floor. Instead, use bit manipulation to achieve the result. You write assertions to ensure both `n` and `b` are non-negative integers.
+
+[Solution]
+```python
+def ceil_divide_without_div(n: int, b: int) -> int:
+    assert isinstance(n, int) and n >= 0, "n must be a non-negative integer"
+    assert isinstance(b, int) and b >= 0, "b must be a non-negative integer"
+    mask = (1 << b) - 1
+    divisible = (n & mask) == 0
+    result = n >> b
+    if not divisible:
+        result += 1
+    return result
+
+# Tests
+import math
+assert ceil_divide_without_div(10, 3) == math.ceil(10 / 2**3)
+assert ceil_divide_without_div(17, 4) == math.ceil(17 / 2**4)
+assert ceil_divide_without_div(100, 5) == math.ceil(100 / 2**5)
+assert ceil_divide_without_div(0, 3) == math.ceil(0 / 2**3)
+assert ceil_divide_without_div(1, 0) == math.ceil(1 / 2**0)
+```
+
+[Response]
+[Reasoning]
+We can leverage the properties of bitwise operations to develop a Python function that computes the ceiling of `n / 2**b` without using division, floating-point operations, or any built-in functions like `math.ceil`, and strictly avoiding converting the problem into a floor computation.
+
+In the context, dividing by `2**b` is equivalent to right-shifting `n` by `b` bits in binary representation when `n` is divisible by `2**b`. Otherwise, this approach inherently computes the floor of the division. To adjust for the ceiling without directly calculating it, we can consider two cases:
+
+1. If `n` is divisible by `2**b`, the result of the division is simply the value of right-shifting `n` by `b` bits.
+2. Otherwise, we need to increment the right-shifted result by 1 to achieve the ceiling effect.
+
+To determine the divisibility of `n` by `2**b`, we can check if the first `b` bits of `n` are all 0. This can be done using a mask with the first `b` bits set to 1, and then performing a bitwise AND operation with `n`. If the result is 0, it indicates that `n` is divisible by `2**b`. The mask can be created using `mask = (1 << b) - 1`.
+
+We'll also include assertions to ensure that `n` and `b` are non-negative integers.
+
+[Implementation]
+Here is the implementation of `ceil_divide_without_div`:
+
+```python
+def ceil_divide_without_div(n: int, b: int) -> int:
+    assert isinstance(n, int) and n >= 0, "n must be a non-negative integer"
+    assert isinstance(b, int) and b >= 0, "b must be a non-negative integer"
+
+    # Constructing the mask to check divisibility
+    mask = (1 << b) - 1
+    divisible = (n & mask) == 0
+
+    result = n >> b
+
+    # If n is not divisible by 2**b, increment the result to get the ceiling
+    if not divisible:
+        result += 1
+
+    return result
+```
+
+[Explanation]
+This function calculates the ceiling of `n / 2**b` purely through bitwise manipulation and integer arithmetic. The assertions ensure the input constraints are met, as specified.
+
+[Tests]
+To verify the correctness of the function, we can run the following tests:
+
+```python
+import math
+
+assert ceil_divide_without_div(10, 3) == math.ceil(10 / 2**3)
+assert ceil_divide_without_div(17, 4) == math.ceil(17 / 2**4)
+assert ceil_divide_without_div(100, 5) == math.ceil(100 / 2**5)
+assert ceil_divide_without_div(0, 3) == math.ceil(0 / 2**3)
+assert ceil_divide_without_div(1, 0) == math.ceil(1 / 2**0)
+```
+
+These tests compare the results of our function with the expected results obtained using `math.ceil` to ensure the correctness of the ceiling division operation.
+
+### Example 3
+[Code]
+    isprime = n >= 2 and 1 or 0
+    for prime in prime_list:                    # Check for factors with all primes
+        if prime * prime > n: break             # ... up to sqrt(n)
+        if not n % prime:
+            isprime = 0
+            break
+    if isprime: prime_dict[n] = 1               # Maintain a dictionary for fast lookup
+    return isprime
+def prime(x):
+    ''' Returns the xth prime '''
+    lastn = prime_list[-1]
+    while len(prime_list) <= x:                 # Keep working until we've got the xth prime
+        lastn = lastn + 1                       # Check the next number
+
+[Property]
+category: code generation (class implementation)
+language: Python
+concepts: prime number memoization, n-th prime calculation, efficiency in prime checks
+difficulty: medium
+
+[Instruction]
+Implement a Python class with a method `find_nth_prime_memoized(n)` that returns the nth prime number, where n is a positive integer. Utilize memoization to store already found prime numbers in a list within the class to avoid recalculating primes for multiple method calls. Ensure the method efficiently updates and references this list to find new primes as needed. Additionally, enhance performance by avoiding unnecessary prime checks.
+
+[Solution]
+```python
+class PrimeFinder:
+    def __init__(self):
+        self.primes = [2, 3]
+
+    def is_prime(self, num: int) -> bool:
+        if num < 2:
+            return False
+        for prime in self.primes:
+            if prime * prime > num:
+                break
+            if num % prime == 0:
+                return False
+        return True
+
+    def find_nth_prime_memoized(self, n: int) -> int:
+        if n <= len(self.primes):
+            return self.primes[n - 1]
+
+        current_num = self.primes[-1] + 2
+        while len(self.primes) < n:
+            if self.is_prime(current_num):
+                self.primes.append(current_num)
+            current_num += 2
+
+        return self.primes[n - 1]
+
+# Tests
+first_few_primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+prime_finder = PrimeFinder()
+for i, prime in enumerate(first_few_primes, 1):
+    assert prime_finder.find_nth_prime_memoized(i) == prime
+# Cached result
+for i, prime in enumerate(first_few_primes, 1):
+    assert prime_finder.find_nth_prime_memoized(i) == prime
+```
+
+[Response]
+[Reasoning]
+Implementing the required Python class with the method `find_nth_prime_memoized(n)` involves several key steps:
+
+1. The class should have a constructor `__init__` that initializes the cache list to store the memoized prime numbers. Initially, the list can be seeded with the first two prime numbers, 2 and 3.
+2. The method `find_nth_prime_memoized` will check if the requested `n`th prime is already in the memoized list. If it is, it will return that prime directly. If not, it will start from the last cached prime and continue to find and cache new primes until the `n`th prime is found.
+3. A helper method `is_prime` can be defined to check if a number is prime. To efficiently check for primality:
+    - It checks if the number is divisible by each of the primes already in the cache.
+    - It only checks up to the square root of the number to be tested, implemented by comparing the square of the prime with the number.
+    - It skips even numbers by incrementing by 2 for each prime check. This is sound since the cache is initialized with the first **two** primes, 2 and 3.
+
+[Implementation]
+Here is how you could implement such a class:
+
+```python
+class PrimeFinder:
+    def __init__(self):
+        self.primes = [2, 3]
+
+    def is_prime(self, num: int) -> bool:
+        if num < 2:
+            return False
+        for prime in self.primes:
+            if prime * prime > num:
+                break
+            if num % prime == 0:
+                return False
+        return True
+
+    def find_nth_prime_memoized(self, n: int) -> int:
+        # Return the n-th prime directly if already in cache
+        if n <= len(self.primes):
+            return self.primes[n - 1]
+
+        # Start checking from the number after the last prime in cache
+        current_num = self.primes[-1] + 2
+        while len(self.primes) < n:
+            if self.is_prime(current_num):
+                # Cache the new prime
+                self.primes.append(current_num)
+            # Skip even numbers
+            current_num += 2
+
+        return self.primes[n - 1]
+```
+
+[Explanation]
+This class `PrimeFinder` initializes with a cache of the first two primes. The `is_prime` method checks if a number is prime by dividing it with cached primes up to its square root. The `find_nth_prime_memoized` method uses this helper method to find and cache primes up to the requested `n`th one. Subsequent calls leverage cached primes for efficiency.
+
+[Tests]
+Here's how you can test this class:
+
+```python
+# Test that the class correctly finds the first few primes
+first_few_primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
+prime_finder = PrimeFinder()
+for i, prime in enumerate(first_few_primes, 1):
+    assert prime_finder.find_nth_prime_memoized(i) == prime
+
+# Test that the memoized results are returned directly
+for i, prime in enumerate(first_few_primes, 1):
+    assert prime_finder.find_nth_prime_memoized(i) == prime
+```
+
+These tests verify that the class correctly finds the first few primes and that subsequent calls return the memoized results directly.
+
+### Example 4
+[Code]
+    return (a + 1) * (b + 1) - 1
+def keys_count(a, b):
+    return powerset(a, b) * 2 - a - b
+def formula(k):
+    if k % 2 != 0:
+        return ((k + 1) ** 2) / 2 + k + 1
+    else:
+        return (k ** 2) / 2 + 2 * k + 1
+def multiset_powerset(multiset):
+    n = len(multiset)
+    c = [0] * n
+    while True:
+        changed = False
+        i = n - 1
+        while i >= 0 and not changed:
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: special formula implementation, odd and even number handling, function composition
+difficulty: easy
+
+[Instruction]
+Here are two special formulas:
+
+$$
+f_1(a, b) = (a + 1) \cdot (b + 1) - 1
+$$
+
+$$
+f_2(k) = \begin{cases}
+    \frac{(k + 1)^2}{2} + k + 1 & \text{if } k \text{ is odd} \\
+    \frac{k^2}{2} + 2k + 1 & \text{if } k \text{ is even}
+\end{cases}
+$$
+
+Write a Python function to return $f_2(f_1(a, b))$ for given `a` and `b`.
+
+[Solution]
+```python
+def f1(a, b):
+    return (a + 1) * (b + 1) - 1
+
+def f2(k):
+    if k % 2 == 0:
+        return (k**2) / 2 + 2 * k + 1
+    else:
+        return ((k + 1)**2) / 2 + k + 1
+
+def f1_f2_combined(a, b):
+    return f2(f1(a, b))
+
+# Tests
+assert f1_f2_combined(2, 3) == f2(f1(2, 3))
+assert f1_f2_combined(4, 5) == f2(f1(4, 5))
+assert f1_f2_combined(6, 7) == f2(f1(6, 7))
+```
+
+[Response]
+[Reasoning]
+Based on the formulas you provided, we can define two Python functions, `f1(a, b)` and `f2(k)`, respectively, and then combine them to calculate $f2(f1(a, b))$ for given `a` and `b`.
+
+[Implementation]
+Here is the implementation:
+
+```python
+def f1(a, b):
+    return (a + 1) * (b + 1) - 1
+
+def f2(k):
+    if k % 2 == 0:  # Check if k is even
+        return (k**2) / 2 + 2 * k + 1
+    else:  # k is odd
+        return ((k + 1)**2) / 2 + k + 1
+
+def f1_f2_combined(a, b):
+    return f2(f1(a, b))
+```
+
+[Explanation]
+In this implementation:
+- `f1(a, b)` calculates the first formula you've given.
+- `f2(k)` calculates the second formula, with a conditional branch for whether `k` is even or odd.
+- `f1_f2_combined(a, b)` uses the output of `f1(a, b)` as the input for `f2(k)` and returns the result.
+
+[Tests]
+To test this combined function, you can simply compare it with the direct application of `f2` to the result of `f1` for different values of `a` and `b`:
+
+```python
+assert f1_f2_combined(2, 3) == f2(f1(2, 3))
+assert f1_f2_combined(4, 5) == f2(f1(4, 5))
+assert f1_f2_combined(6, 7) == f2(f1(6, 7))
+```
+
+### Example 5
+[Code]
+    while left<len(arr) and ryt >= start and left <= ryt:
+        mid = (left+ryt)//2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] > target:
+            ryt = mid-1
+        else:
+            left = mid+1
+    return left
+def tripletsSorting(nums, t):
+    # TimeComplexity = O((n^2)logn)
+    nums.sort()
+    count = 0
+    for i in range(len(nums)):
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: insertion point for a sorted array, optimized time complexity
+difficulty: easy
+
+[Instruction]
+Design a Python function that takes a sorted array and a target value, and return a valid index where target can be inserted to maintain the array's sorted order. Optimize the function to run in logarithmic time complexity.
+
+For example, given `array = [1, 3, 5, 5, 6]` and `target = 5`, the function should return either 2 or 3 because 5 presents at both indices 2 and 3.
+
+[Solution]
+```python
+from typing import List
+
+def search_insert_position(nums: List[int], target: int) -> int:
+    left, right = 0, len(nums) - 1
+
+    while left <= right:
+        mid = (left + right) // 2
+        if nums[mid] == target:
+            return mid
+        elif nums[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return left
+
+# Tests
+assert search_insert_position([1, 3, 5, 5, 6], 5) in [2, 3]
+assert search_insert_position([1, 3, 5, 5, 6], 2) == 1
+assert search_insert_position([1, 3, 5, 5, 6], 7) == 5
+```
+
+[Response]
+[Reasoning]
+To solve this problem efficiently and ensure logarithmic time complexity, we can use a binary search algorithm. Compared with a standard binary search that looks for an exact match, we can modify the algorithm such that when the target is not found, we return the `left` bound, which represents the index where the target can be inserted to maintain the array's sorted order. Since any valid index for insertion is acceptable, we can direclty return the index if there is an exact match.
+
+[Implementation]
+Here is a Python function that implements this approach:
+
+```python
+from typing import List
+
+def search_insert_position(nums: List[int], target: int) -> int:
+    """
+    Finds the index to insert `target` into `nums` to maintain sorted order. For example,
+    given `nums = [1, 3, 5, 5, 6]` and `target = 5`, this function returns either 2 or 3,
+    as `target` can be inserted at index 2 or 3 to maintain the sorted order.
+    """
+    left, right = 0, len(nums) - 1
+
+    while left <= right:
+        mid = (left + right) // 2
+
+        # Directly return the index if there's an exact match
+        if nums[mid] == target:
+            return mid
+        elif nums[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+
+    # At this point, `left` is the correct insertion index
+    return left
+```
+
+[Explanation]
+This implementation ensures that when `target` is not found, `left` represents the correct insertion index. This is because at the end of the loop, all elements to the left of `left` are smaller than `target`, all elements to the right of `left` are equal to or larger than `target`, and `left > right`. Therefore, `left` is the correct index for insertion to maintain the sorted order.
+
+[Tests]
+To test this function, you can use the example you provided:
+
+```python
+# Provided example
+assert search_insert_position([1, 3, 5, 5, 6], 5) in [2, 3]
+# Additional cases
+assert search_insert_position([1, 3, 5, 5, 6], 2) == 1
+assert search_insert_position([1, 3, 5, 5, 6], 7) == 5
+```
+
+These tests cover the scenario where the target is found at multiple indices, as well as cases where the target is not present in the array but needs to be inserted at the correct position to maintain the sorted order.
+
+### Example 6
+[Code]
+files = ['kitti_all_train.data',
+         'kitti_all_train.labels',
+         'kitti_all_test.data',
+         'kitti_all_test.labels']
+
+for file in files:
+    if file not in os.listdir(data_dir):
+        zip_path = os.path.join(data_dir, 'kitti_features.zip')
+        target_path = os.path.dirname(zip_path)
+        print("Extracting {} to {}...".format(zip_path, target_path))
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(target_path)
+        print("Done.")
+        break
+
+X_train = np.loadtxt(os.path.join(data_dir, files[0]), np.float64, skiprows=1)
+y_train = np.loadtxt(os.path.join(data_dir, files[1]), np.int32, skiprows=1)
+X_test = np.loadtxt(os.path.join(data_dir, files[2]), np.float64, skiprows=1)
+
+[Property]
+category: code generation (script implementation)
+language: Python
+concepts: file I/O, data loading and processing with NumPy, zip file handling
+difficulty: medium
+
+[Instruction]
+I have a zip archive `kitti_features.zip` with four files (no top-level directory): `kitti_all_train.data`, `kitti_all_train.labels`, `kitti_all_test.data`, and `kitti_all_test.labels`. I want to load these files into numpy arrays for a machine learning project. The `.data` files are floating points and the `.labels` files are integers, both with a header row.
+
+Can you write an initial Python script that extract the zip archive (if not already extracted) and loads the training and testing datasets + labels into appropriate numpy variables.
+
+[Solution]
+
+[Response]
+To achieve this, you'll need to use `zipfile` to extract the files from the zip archive and `numpy` to load the data into arrays. Since the `.data` files contain `float64` numbers and the `.labels` files contain `int32` integers, both with a header row, to process them appropriately, you can use `np.loadtxt`, specifying data types as `np.float64` for `.data` files and `np.int32` for `.labels` files, while also including `skiprows=1` to bypass the header. Additionally, given that the zip archive doesn't have a top-level directory, the files will be extracted directly into the target directory.
+
+Here's a Python script that extracts the files if they haven't been extracted yet and loads the data into numpy arrays:
+
+```python
+import os
+import numpy as np
+import zipfile
+
+def extract_files(zip_path, file_paths, extract_to='.'):
+    """Extracts files from a zip archive if they don't already exist."""
+    all_files_extracted = all(os.path.exists(file_path) for file_path in file_paths)
+    if not all_files_extracted:
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extract_to)
+
+def load_data(file_name, dtype):
+    """Loads data from a file into a numpy array, skipping the header row."""
+    return np.loadtxt(file_name, dtype=dtype, skiprows=1)
+
+def main():
+    zip_path = 'kitti_features.zip'
+    data_files = {
+        'train_data': 'kitti_all_train.data',
+        'train_labels': 'kitti_all_train.labels',
+        'test_data': 'kitti_all_test.data',
+        'test_labels': 'kitti_all_test.labels'
+    }
+    extract_files(zip_path, data_files.values())
+
+    # Load the datasets
+    X_train = load_data(data_files['train_data'], np.float64)
+    y_train = load_data(data_files['train_labels'], np.int32)
+    X_test = load_data(data_files['test_data'], np.float64)
+    y_test = load_data(data_files['test_labels'], np.int32)
+
+    # You now have the datasets and labels loaded into numpy arrays
+    print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
+    print(f"X_test shape: {X_test.shape}, y_test shape: {y_test.shape}")
+
+if __name__ == "__main__":
+    main()
+```
+
+This script defines separate functions for data extraction and loading. In the `main` function, it first checks if the data and label files are already extracted. If not, it extracts them from the specified zip archive. Then, it loads the data into `numpy` arrays, ensuring the desired data types and to skip the header row as you requested. Remember to have `numpy` installed in your environment, and ensure that the zip file is in the correct location relative to the script.
+
+### Example 7
+[Code]
+template <class T, class Container = List<T>>
+class Stack
+{
+public:
+    Stack();
+
+    Stack(std::initializer_list<T>);
+
+    const bool empty() const;
+
+    const size_t size() const;
+
+    void push(constT&);
+
+    void pop();
+
+
+[Property]
+category: code generation (class implementation)
+language: C++
+concepts: template-based generic stack implementation, STL container usage
+difficulty: medium
+
+[Instruction]
+Implement a generic stack class in C++ that allows the user to create a stack for any data type. The class should be template-based, enabling type flexibility. Your implementation should support basic stack operations such as `push`, `pop`, `top`, and checking if the stack is `empty`. Additionally, include a method to retrieve the current size of the stack. For the underlying container, use the Standard Template Library's `std::vector` as the default storage mechanism. This will provide a dynamic array that can efficiently resize itself as needed.
+
+[Solution]
+
+[Response]
+Sure, I'll provide a template-based `Stack` class in C++ that meets your requirements. The class will use `std::vector` as the underlying container and provide methods for `push`, `pop`, `top`, `empty`, and `size` operations. Besides a default constructor, I'll include a constructor that takes an `std::initializer_list` to initialize the stack with a variable number of elements. I'll also employ `stdexcept` to handle exceptions for operations on an empty stack.
+
+Here is a possible implementation:
+
+```cpp
+#include <vector>
+#include <stdexcept>
+#include <initializer_list>
+
+template<typename T>
+class Stack {
+private:
+    std::vector<T> elements; // Vector to store stack elements
+
+public:
+    Stack() = default;
+    Stack(std::initializer_list<T> init) : elements(init) {}
+
+    void push(const T& element) {
+        elements.push_back(element);
+    }
+
+    void pop() {
+        if (empty()) {
+            throw std::out_of_range("Stack<>::pop(): empty stack");
+        }
+        elements.pop_back();
+    }
+
+    // Get the top element of the stack (const version)
+    const T& top() const {
+        if (empty()) {
+            throw std::out_of_range("Stack<>::top(): empty stack");
+        }
+        return elements.back();
+    }
+
+    // Get the top element of the stack (non-const version)
+    T& top() {
+        if (empty()) {
+            throw std::out_of_range("Stack<>::top(): empty stack");
+        }
+        return elements.back();
+    }
+
+    bool empty() const {
+        return elements.empty();
+    }
+
+    std::size_t size() const {
+        return elements.size();
+    }
+};
+```
+
+Here is a simple example showing how to use this `Stack` class:
+
+```cpp
+#include <iostream>
+#include <string>
+
+int main() {
+    // Stack of integers (using default constructor)
+    Stack<int> intStack;
+    intStack.push(5);
+    intStack.push(25);
+    std::cout << "Top element in intStack: " << intStack.top() << std::endl;
+    intStack.pop();
+    std::cout << "Top element in intStack after pop: " << intStack.top() << std::endl;
+
+    // Stack of strings (using initializer list)
+    Stack<std::string> stringStack{"Hello", "World"};
+    std::cout << "Top element in stringStack: " << stringStack.top() << std::endl;
+    stringStack.pop();
+    std::cout << "Top element in stringStack after pop: " << stringStack.top() << std::endl;
+
+    return 0;
+}
+```
+
+This example demonstrates the usage of the `Stack` class with both integer and string types, different initialization methods, and basic stack operations. Note that attempting to `pop` or `top` from an empty stack will result in an `std::out_of_range` exception. Therefore, in practical applications, you should catch these exceptions or verify if the stack is empty before executing these operations.
+
+### Example 8
+[Code]
+        Ok((p, uids))
+    }
+}
+
+impl MyRedisPool {
+    pub(crate) fn get_posts(
+        &self,
+        ids: Vec<u32>,
+    ) -> impl Future<Output = Result<(Vec<Post>, Vec<u32>), ResError>> + '_ {
+        self.get_cache_with_perm_with_uids(ids, crate::handler::cache::POST_U8)
+    }
+
+    pub(crate) async fn get_posts_old(
+        &self,
+        tid: u32,
+        page: usize,
+    ) -> Result<(Vec<Post>, Vec<u32>), ResError> {
+        let key = format!("topic:{}:posts_time_created", tid);
+        self.get_cache_with_uids_from_zrange(key.as_str(), page, crate::handler::cache::POST_U8)
+            .await
+    }
+
+    pub(crate) async fn get_posts_pop(
+        &self,
+        tid: u32,
+
+[Property]
+category: code generation (struct implementation)
+language: Rust
+concepts: asynchronous programming through async/await, Rust error handling patterns, Redis interaction, pagination support
+difficulty: very hard
+
+[Instruction]
+Build a Rust-based `RedisPool` struct that provides asynchronous methods for caching and retrieving posts by their IDs. Ensure your implementation leverages the `tokio` runtime for asynchronous operations and the `redis` crate for interaction with Redis. Your `RedisPool` should include methods to cache posts, retrieve cached posts by IDs, and support pagination for listing posts associated with a topic. Use appropriate error handling to manage potential Redis operation failures.
+
+[Solution]
+
+[Response]
+To implement a `RedisPool` struct that provides asynchronous methods for caching and retrieving posts by their IDs, while leveraging the `tokio` runtime for asynchronous operations and the `redis` crate for interaction with Redis, you'll need to follow a few steps. Below is an example implementation that outlines the structure and functionality you've described.
+
+First, ensure you have the necessary dependencies in your `Cargo.toml` file:
+
+```toml
+[dependencies]
+# Please check for the latest versions of these crates
+tokio = { version = "1", features = ["full"] }
+redis = "0.24.0"
+async-trait = "0.1.50"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+```
+
+Next, you'll need a `Post` struct and `RedisPool` with methods to cache posts, retrieve cached posts by IDs, and support pagination for listing posts associated with a topic. You also define a custom error type for error handling:
+
+```rust
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize)]
+struct Post {
+    id: u32,
+    title: String,
+    content: String,
+    topic: String,
+}
+
+#[derive(Debug)]
+enum RequestError {
+    RedisError(redis::RedisError),
+    SerdeError(serde_json::Error),
+}
+
+impl From<redis::RedisError> for RequestError {
+    fn from(err: redis::RedisError) -> Self {
+        RequestError::RedisError(err)
+    }
+}
+
+impl From<serde_json::Error> for RequestError {
+    fn from(err: serde_json::Error) -> Self {
+        RequestError::SerdeError(err)
+    }
+}
+```
+
+After that, define your `RedisPool` struct with a field for the Redis connection pool. For simplicity, you'll directly use `AsyncConnection` here, but in a real-world scenario, you might want to use a connection pool. Implement the required asynchronous methods using the `async_trait` crate for defining async methods in traits:
+
+```rust
+struct RedisPool {
+    conn: redis::AsyncConnection,
+}
+
+use async_trait::async_trait;
+use redis::AsyncCommands;
+
+impl RedisPool {
+    pub async fn cache_posts(&self, posts: Vec<Post>) -> Result<(), RequestError> {
+        let mut conn = &self.conn;
+        for post in posts.iter() {
+            let key = format!("post:{}", post.id);
+            let _: () = redis::cmd("HMSET")
+                .arg(&key)
+                .arg(serde_json::to_string(&post)?)
+                .query_async(&mut conn)
+                .await
+                .map_err(|e| e.into())?;
+        }
+        Ok(())
+    }
+
+    pub async fn get_posts_by_ids(&self, ids: Vec<u32>) -> Result<Vec<Post>, RequestError> {
+        let mut conn = &self.conn;
+        let keys: Vec<String> = ids.iter().map(|id| format!("post:{}", id)).collect();
+        let posts: Vec<String> = conn.get(keys).await.map_err(|e| e.into())?;
+        posts.iter().map(|p| serde_json::from_str(p)).collect()
+    }
+
+    pub async fn get_posts_for_topic_paginated(&self, tid: u32, page: usize, page_size: usize) -> Result<(Vec<Post>, Vec<u32>), RequestError> {
+        let mut conn = &self.conn;
+        let start = page * page_size;
+        let end = (page + 1) * page_size - 1;
+        let key = format!("topic:{}", tid);
+        let ids: Vec<u32> = conn.zrange(key, start as isize, end as isize).await.map_err(|e| e.into())?;
+        let posts = self.get_posts_by_ids(ids).await?;
+        Ok((posts, ids))
+    }
+}
+```
+
+To use `RedisPool`, you'll first need to establish a connection to Redis and then interact with the pool for caching or retrieving posts:
+
+```rust
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = redis::Client::open("redis://127.0.0.1/")?;
+    let conn = client.get_async_connection().await?;
+    let pool = RedisPool { conn };
+
+    // Example usage
+    let posts = vec![Post { id: 1, title: "Hello".into(), content: "World".into(), topic: "rust".into() }];
+    pool.cache_posts(posts).await?;
+
+    Ok(())
+}
+```
+
+This basic implementation covers the essentials you need: caching posts, retrieving them by ID, and supporting pagination. You might need to adjust for specifics like connection pooling or handling serialization/deserialization more gracefully, but this gives you a good starting point.
+
+### Example 9
+[Code]
+def test_fill_latitude_longitude():
+    # given
+
+    posis = data.load_from_json_file("test/data/test_posis.json", data.POSI)
+    assert len(posis) == 4
+
+    fps = data.load_from_json_file("test/data/test_fps.json", data.WifiFingerprint)
+    assert len(fps) == 50
+    assert fps[0].latitude is None
+    assert fps[0].longitude is None
+
+    # when
+    fps_new = mf.fill_latitude_longitude(fps, posis)
+
+    # then
+    assert fps_new[0].latitude is not None
+    assert fps_new[0].longitude is not None
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: list and dictionary traversal, key-value pair matching, test case creation
+difficulty: medium
+
+[Instruction]
+Write a Python function named `fill_lat_long_for_fingerprints` that enriches or updates a list of WiFi fingerprint objects with latitude and longitude information based on matching position IDs.
+
+Input: Two lists, `fingerprints` and `positions`, where each entry is an object or a dictionary. Each `fingerprint` has `pos_id`, `latitude`, and `longitude` keys, and each position has `pos_id`, `latitude`, and `longitude` keys.
+
+Additionally, write a test function to validate this behavior using example data files for fingerprints and positions.
+
+[Solution]
+
+[Response]
+To create the function, we'll iterate over each fingerprint list and search for a matching `pos_id` in the `positions` list. When a match is found, we'll update the `latitude` and `longitude` values of the fingerprint with the corresponding values from the position.
+
+Here's how you can implement the function:
+
+```python
+def fill_lat_long_for_fingerprints(fingerprints, positions):
+    """
+    Enriches or updates a list of WiFi fingerprint objects with latitude and longitude
+    information based on matching position IDs.
+    """
+    pos_id_to_lat_long = {pos['pos_id']: (pos['latitude'], pos['longitude']) for pos in positions}
+
+    for fingerprint in fingerprints:
+        if fingerprint['pos_id'] in pos_id_to_lat_long:
+            lat, long = pos_id_to_lat_long[fingerprint['pos_id']]
+            fingerprint['latitude'] = lat
+            fingerprint['longitude'] = long
+```
+
+To test the function given the example data files, you can define a test function that loads the data, calls the function, and asserts the expected behavior. Let's assume each data file contains a list of dictionaries. Here's an example of how you might structure the test function:
+
+```python
+def test_fill_lat_long_for_fingerprints_from_files(fingerprints_file_path, positions_file_path):
+    # Load data from files
+    with open(fingerprints_file_path, 'r') as f:
+        fingerprints = json.load(f)
+    with open(positions_file_path, 'r') as f:
+        positions = json.load(f)
+
+    fill_lat_long_for_fingerprints(fingerprints, positions)
+
+    positions_dict = {position['pos_id']: position for position in positions}
+    for fingerprint in fingerprints:
+        expected_latitude = positions_dict[fingerprint['pos_id']]['latitude']
+        expected_longitude = positions_dict[fingerprint['pos_id']]['longitude']
+        assert fingerprint['latitude'] == expected_latitude, \
+            f"Latitude for pos_id {fingerprint['pos_id']} should be updated to {expected_latitude}"
+        assert fingerprint['longitude'] == expected_longitude, \
+            f"Longitude for pos_id {fingerprint['pos_id']} should be updated to {expected_longitude}"
+
+    print("All tests passed!")
+
+# Example usage, if the data files are named 'fingerprints.json' and 'positions.json'
+# test_fill_lat_long_for_fingerprints_from_files('fingerprints.json', 'positions.json')
+```
+
+The test function works by asserting that the latitude and longitude values in the fingerprints have been updated as expected. You can then run the test function with the appropriate file paths to validate the behavior.
+
+### Example 10
+[Code]
+def imdb(path=Path("data/aclImdb/")):
+    import pickle
+
+    try:
+        return pickle.load((path / "train-test.p").open("rb"))
+    except FileNotFoundError:
+        pass
+
+    CLASSES = ["neg", "pos", "unsup"]
+
+    def get_texts(path):
+        texts, labels = [], []
+        for idx, label in tqdm(enumerate(CLASSES)):
+            for fname in tqdm((path / label).glob("*.txt"), leave=False):
+                texts.append(fname.read_text())
+                labels.append(idx)
+        return texts, np.asarray(labels)
+
+    trXY = get_texts(path / "train")
+    teXY = get_texts(path / "test")
+    data = (trXY, teXY)
+    pickle.dump(data, (path / "train-test.p").open("wb"))
+    return data
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: data loading given a specific directory structure, file I/O, dataset manipulation with Numpy, caching with pickle, progress display using tqdm
+difficulty: hard
+
+[Instruction]
+Develop a Python function `load_imdb_dataset` that loads the IMDb dataset for sentiment analysis from a specified directory. Here is the directory structure:
+
+```
+data/
+  aclImdb/
+    train/
+      neg/
+        *.txt (negative review text files)
+      pos/
+        *.txt (positive review text files)
+      unsup/
+        *.txt (unsupervised/unlabeled review text files)
+  test/
+    neg/
+      *.txt (negative review text files)
+    pos/
+      *.txt (positive review text files)
+    unsup/
+      *.txt (unsupervised/unlabeled review text files)
+  train-test.p (pickled file containing the formatted dataset, may or may not exist)
+```
+
+The function should return a tuple of two elements, each being a tuple of two elements. The first element of each tuple is a list of review texts, and the second element is a numpy array of labels (0 for negative, 1 for positive, and 2 for unsupervised). The function should also implement caching for the entire return value using `pickle` to avoid redundant processing, as shown in the directory structure.
+
+Use `tqdm` to display progress bars for loading the dataset.
+
+[Solution]
+
+[Response]
+To create the `load_imdb_dataset` function as specified, we'll follow these steps:
+
+1. Before processing the dataset, check if the `train-test.p` pickled file exists in the data directory. If it does, load it using `pickle` and return its content immediately.
+2. If the cached file does not exist, iterate over the files in the `train` and `test` directories, loading the review texts and labels. Use the directory names (`neg`, `pos`, `unsup`) to determine the labels. Leverage `pathlib` for file system navigation.
+3. Use `tqdm` to display progress bars for loading the dataset.
+4. After processing the dataset, save the resulting structure to the `train-test.p` file using `pickle` for future use.
+5. Return the loaded dataset.
+
+Here's the implementation:
+
+```python
+import numpy as np
+import pickle
+from tqdm import tqdm
+from pathlib import Path
+
+def load_imdb_dataset(data_dir="data"):
+    """
+    Load the IMDb dataset from the specified directory.
+    """
+    data_path = Path(data_dir)
+    pickled_data_path = data_path / 'train-test.p'
+
+    # Check if the pickled dataset exists and load it
+    if pickled_data_path.exists():
+        with pickled_data_path.open('rb') as file:
+            return pickle.load(file)
+
+    # Helper function to read reviews and labels
+    def read_reviews_and_labels(path):
+        reviews = []
+        labels = []
+        for label, label_dir in [(0, 'neg'), (1, 'pos'), (2, 'unsup')]:
+            txt_paths = list((path / label_dir).glob('*.txt'))
+            for text_file in tqdm(txt_paths, desc=f'Loading {label_dir}'):
+                reviews.append(text_file.read_text(encoding='utf-8'))
+                labels.append(label)
+        return reviews, np.array(labels)
+
+    # Load training and testing data
+    train_reviews, train_labels = read_reviews_and_labels(data_path / 'aclImdb' / 'train')
+    test_reviews, test_labels = read_reviews_and_labels(data_path / 'aclImdb' / 'test')
+
+    # Package the dataset
+    dataset = ((train_reviews, train_labels), (test_reviews, test_labels))
+
+    # Pickle the dataset for future use
+    with pickled_data_path.open('wb') as file:
+        pickle.dump(dataset, file)
+
+    return dataset
+```
+
+This function assumes the directory structure you provided and uses `tqdm` to show progress. Note that it also uses the `encoding='utf-8'` parameter when opening files to ensure compatibility with text files that may contain characters outside of the ASCII range. Before running this function, ensure you have the necessary libraries installed (`tqdm`, `numpy`) and the IMDb dataset properly placed in the specified directory.
+
+### Example 11
+[Code]
+def decompress(self):
+    source = self.compressed
+    if isinstance(source, (bytes, bytearray)):
+        return self.decompress_bytes()
+    pos = 0
+    node = self.root
+    res = bytearray()
+
+    while pos < len(source):
+        code = int(source[pos])
+        child = node.children[code]
+        if child.is_leaf:
+            res.append(child)
+            node = self.root
+        else:
+            node = child
+        pos += 1
+
+    return bytes(res)
+
+[Property]
+category: code generation (class and function implementation)
+language: Python
+concepts: decoding Huffman compressed data, binary tree traversal, byte array processing
+difficulty: medium
+
+[Instruction]
+Write a Python function `huffman_decompress` that takes two arguments: `compressed_data`, a byte array of 0/1 sequence representing Huffman compressed data, and `huffman_tree`, a Huffman tree that stores the actual data (each leaf is associated with a character). The function should return the original uncompressed data as `bytes`. Define the `HuffmanNode` class yourself as a general tree structure with a `children` list.
+
+[Solution]
+```python
+class HuffmanNode:
+    def __init__(self, value=None):
+        self.value = value
+        self.children = []
+
+def huffman_decompress(compressed_data, huffman_tree):
+    result = []
+    node = huffman_tree
+    for bit in compressed_data:
+        if len(node.children) > 0:
+            node = node.children[int(bit)]
+        if len(node.children) == 0:
+            result.append(node.value)
+            node = huffman_tree
+
+    return "".join(result).encode()
+
+# Tests
+root = HuffmanNode()
+root.children = [HuffmanNode('A'), HuffmanNode('B')]
+root.children[0].children = [HuffmanNode('C'), HuffmanNode('D')]
+root.children[1].children = [HuffmanNode('E'), HuffmanNode('F')]
+compressed_data = bytearray([0, 1, 0, 0, 1, 1])
+# 01 -> D, 00 -> C, 11 -> F
+assert huffman_decompress(compressed_data, root) == b'DCF'
+```
+
+[Response]
+[Reasoning]
+To accomplish the Huffman decompression, we first need to define the `HuffmanNode` class, which, as required, should be a general tree structure with a `children` list and an optional `value` attribute to store the character associated with a leaf node.
+
+Then, we'll implement the `huffman_decompress` function. This function will traverse the Huffman tree according to the bits in `compressed_data`. When it encounters a leaf node, the associated character will be appended to the result, and the traversal restarts from the root of the tree. This process continues until the entire `compressed_data` is processed.
+
+You said that `compressed_data` is a byte array of 0/1 sequence, so I assume that each byte, not each bit, represents a step in the Huffman tree. In practice, it is more efficient
+
+[Implementation]
+Here's how we can implement this:
+
+```python
+class HuffmanNode:
+    def __init__(self, value=None):
+        self.value = value
+        self.children = []
+
+def huffman_decompress(compressed_data, huffman_tree):
+    # Store the decompressed characters here
+    result = []
+
+    # Start traversal from the root of the Huffman tree
+    node = huffman_tree
+
+    # Each byte represents a 0/1 bit in `compressed_data`
+    for bit in compressed_data:
+        # Check if the node has children
+        if len(node.children) > 0:
+            node = node.children[int(bit)]
+        # After moving to the child, check if it's a leaf node
+        if len(node.children) == 0:
+            result.append(node.value)
+            # Reset to start from the root for the next character
+            node = huffman_tree
+
+    # Convert the result to bytes
+    return "".join(result).encode()
+```
+
+[Explanation]
+In this implementation, we assume that `compressed_data` is a byte array where each byte represents a 0/1 bit in the Huffman tree. We traverse the tree according to the bits in `compressed_data`, and when we reach a leaf node, we append the associated character to the result. Finally, we convert the result to `bytes` by concatenating the characters and encoding them.
+
+[Tests]
+You can test this function with a sample Huffman tree and compressed data to verify that the decompression works correctly:
+
+```python
+root = HuffmanNode()
+root.children = [HuffmanNode('A'), HuffmanNode('B')]
+root.children[0].children = [HuffmanNode('C'), HuffmanNode('D')]
+root.children[1].children = [HuffmanNode('E'), HuffmanNode('F')]
+compressed_data = bytearray([0, 1, 0, 0, 1, 1])
+# 01 -> D, 00 -> C, 11 -> F
+assert huffman_decompress(compressed_data, root) == b'DCF'
+```
+
+### Example 12
+[Code]
+def format_size(num):
+    """http://stackoverflow.com/a/1094933
+    """
+    for x in ['bytes', 'KB', 'MB', 'GB']:
+        if num < 1024.0 and num > -1024.0:
+            return "%3.1f%s" % (num, x)
+        num /= 1024.0
+    return "%3.1f%s" % (num, 'TB')
+assert format_size(1024**2 - 1) == '1024.0KB'
+assert format_size(1024*512) == '512.0KB'
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: arithmetic operations for size conversion, rounding numbers, dynamic unit selection, string interpolation
+difficulty: medium
+
+[Instruction]
+Create a Python function to format a file size in bytes into a human-readable string representation, using 'bytes', 'KB' (kilobytes), 'MB' (megabytes), 'GB' (gigabytes), or 'TB' (terabytes) units. The output should be rounded to one decimal place and follow the format: "{X.Y}{Unit}", where "Unit" is the appropriate size unit and "X.Y" is the rounded size. For example, `format_size(1024 * 512)` should return `'512.0KB'`, and `format_size(1024**2 - 1)` should return `'1024.0KB'`.
+
+[Solution]
+```python
+def format_size(size_bytes):
+    units = ['bytes', 'KB', 'MB', 'GB', 'TB']
+    if size_bytes == 0:
+        return "0.0bytes"
+    num = abs(size_bytes)
+    unit = units[0]
+
+    for u in units[1:]:
+        if num < 1024.0:
+            break
+        num /= 1024.0
+        unit = u
+
+    formatted_size = f"{num:.1f}{unit}"
+    return formatted_size if size_bytes >= 0 else f"-{formatted_size}"
+
+# Tests
+test_data = [
+    (1024 ** 2, "1.0MB"),
+    (1024 ** 2 - 1, "1024.0KB"),
+    (1024 ** 3 * 512, "512.0GB"),
+    (1024 ** 4 * 512, "512.0TB"),
+]
+for size, expected_output in test_data:
+    assert format_size(size) == expected_output
+    assert format_size(-size) == f"-{expected_output}"
+```
+
+[Response]
+[Reasoning]
+To create such a function, we can use a loop to iterate through a predefined list of units (`['bytes', 'KB', 'MB', 'GB', 'TB']`) and check if the given number of bytes fits into the current unit by comparing it with 1024.0 and -1024.0 (for handling negative sizes). We'll keep dividing the number by 1024.0 until the correct unit is found where the number is less than 1024.0. Then, we'll format the result using the appropriate unit and the rounded size.
+
+[Implementation]
+```python
+def format_size(size_bytes):
+    units = ['bytes', 'KB', 'MB', 'GB', 'TB']
+    if size_bytes == 0:
+        return "0.0bytes"  # Directly return for 0 bytes to avoid division by zero in loop
+    num = abs(size_bytes)
+    unit = units[0]
+
+    for u in units[1:]:
+        if num < 1024.0:
+            break
+        num /= 1024.0
+        unit = u
+
+    formatted_size = f"{num:.1f}{unit}"
+    return formatted_size if size_bytes >= 0 else f"-{formatted_size}"
+```
+
+[Explanation]
+This implementation handles both positive and negative file sizes and returns the formatted size as a string, even though negative sizes are not common in real-world scenarios.
+
+[Tests]
+You can write the following test cases to ensure it works correctly:
+
+```python
+test_data = [
+    (1024 ** 2, "1.0MB"),
+    (1024 ** 2 - 1, "1024.0KB"),
+    (1024 ** 3 * 512, "512.0GB"),
+    (1024 ** 4 * 512, "512.0TB"),
+]
+for size, expected_output in test_data:
+    assert format_size(size) == expected_output
+    assert format_size(-size) == f"-{expected_output}"
+```
+
+These test cases cover both positive and negative sizes across different units to validate the correctness of the `format_size` function.
+
+### Example 13
+[Code]
+def unify_stringlist(L: list):
+    """ Adds asterisks to strings that appear multiple times, so the resulting
+    list has only unique strings but still the same length, order, and meaning.
+    For example:
+        unify_stringlist(['a','a','b','a','c']) -> ['a','a*','b','a**','c']
+    """
+    assert(all([isinstance(l,str) for l in L]))
+    return [L[i]+"*"*L[:i].count(L[i]) for i in range(len(L))]
+assert unify_stringlist(list("abc")) == list("abc")
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: list comprehension, unique string creation, precondition checking for type validation
+difficulty: easy
+
+[Instruction]
+Design a Python function to encode a list of strings into a unique list with the same length, order, and meaning. The new list is formed by appending asterisks (*) to duplicate strings. For instance, given ['a', 'a', 'b', 'a', 'c'], the function should return ['a', 'a*', 'b', 'a**', 'c'], while for ['a', 'b', 'c'] it should return ['a', 'b', 'c'] without any changes. Make a precondition check through `assert` to ensure the input is a list of strings.
+
+Solve the problem in two lines of code, one for the precondition check and the other for the main logic.
+
+[Solution]
+```python
+def encode_strings(input_list):
+    assert all(isinstance(item, str) for item in input_list), "Input must be a list of strings"
+    return [s + '*' * input_list[:i].count(s) for i, s in enumerate(input_list)]
+
+# Tests
+assert encode_strings(['a', 'a', 'b', 'a', 'c']) == ['a', 'a*', 'b', 'a**', 'c']
+assert encode_strings(['a', 'b', 'c']) == ['a', 'b', 'c']
+```
+
+[Response]
+[Reasoning]
+You can achieve this functionality by first ensuring the input meets your requirements using an `assert` statement with list comprehension. Then, use another list comprehension to iterate through the input list and append `'*'` to the strings. The number of `'*'` is the number of occurrences of the string before the current index.
+
+[Implementation]
+Here's how you can do it in two lines of Python code:
+
+```python
+def encode_strings(input_list):
+    assert all(isinstance(item, str) for item in input_list), "Input must be a list of strings"
+    return [s + '*' * input_list[:i].count(s) for i, s in enumerate(input_list)]
+```
+
+[Explanation]
+The `enumerate` function provides both the index and the string in each iteration, allowing you to count the occurrences of the string before the current index.
+
+[Tests]
+Now you can test your function with the provided examples:
+
+```python
+assert encode_strings(['a', 'a', 'b', 'a', 'c']) == ['a', 'a*', 'b', 'a**', 'c']
+assert encode_strings(['a', 'b', 'c']) == ['a', 'b', 'c']
+```
+
+Note that although the function is concise, it is not the most efficient solution for large lists, as the `count` method has a time complexity of O(n) for each iteration. For larger lists, a more efficient approach might be to use a dictionary to store the counts of each string and then iterate through the list to append the appropriate number of `'*'` to each string.
+
+### Example 14
+[Code]
+def edit_string_for_tags(tags):
+    """
+    Simplified version of comma separated tags
+    """
+    names = []
+    for tag in tags:
+        name = tag.name
+        if ',' in name:
+            names.append('"%s"' % name)
+            continue
+        names.append(name)
+    return ','.join(names)
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: object attribute access, conditional string formatting, joining strings with a separator
+difficulty: easy
+
+[Instruction]
+Write a Python function to format a list of tag objects (each with a `.name` attribute) and into a single string containing all tag names separated by commas (no spaces), where tag names containing commas are first enclosed in double quotes.
+
+[Solution]
+```python
+def format_tags(tag_objects):
+    formatted_tags = []
+
+    for tag in tag_objects:
+        tag_name = tag.name
+        if ',' in tag_name:
+            formatted_tags.append(f'"{tag_name}"')
+        else:
+            formatted_tags.append(tag_name)
+
+    return ','.join(formatted_tags)
+
+# Tests
+class Tag:
+    def __init__(self, name):
+        self.name = name
+
+tags = [Tag('python'), Tag('data science'), Tag('machine learning'), Tag('AI, Robotics')]
+formatted_string = format_tags(tags)
+assert formatted_string == 'python,data science,machine learning,"AI, Robotics"'
+```
+
+[Response]
+[Reasoning]
+You can create a Python function that iterates through the tags and checks if the `.name` attribute contains a comma to format it accordingly.
+
+[Implementation]
+Here's how you could do it:
+
+```python
+def format_tags(tag_objects):
+    formatted_tags = []
+
+    for tag in tag_objects:
+        tag_name = tag.name
+        if ',' in tag_name:
+            # If the tag name contains a comma, enclose it in double quotes
+            formatted_tags.append(f'"{tag_name}"')
+        else:
+            formatted_tags.append(tag_name)
+
+    # Join all formatted tag names with commas (no spaces)
+    return ','.join(formatted_tags)
+```
+
+[Explanation]
+This function goes through each tag object, checks for commas in the tag's name, and formats it by enclosing it in double quotes if needed. Tags are then joined into a single string, separated by commas without spaces.
+
+[Tests]
+To test this function, you can create a simple `Tag` class with a `name` attribute and a list of `Tag` objects:
+
+```python
+class Tag:
+    def __init__(self, name):
+        self.name = name
+
+tags = [Tag('python'), Tag('data science'), Tag('machine learning'), Tag('AI, Robotics')]
+formatted_string = format_tags(tags)
+assert formatted_string == 'python,data science,machine learning,"AI, Robotics"'
+```
+
+This test ensures that the function correctly formats each tag name and combines them into the expected output string.
+
+### Example 15
+[Code]
+def _create_folds_list(data, count):
+    """
+    Creates folds from the given data.
+
+    :param data: the data to fold
+    :param count: the number of folds to create
+
+    :return: a list of folds
+    """
+
+    fold_count = len(data) / count
+    folds = list()
+
+    for fold_index in range(count):
+        low = int(fold_index * fold_count)
+        high = int((fold_index + 1) * fold_count)
+
+        fold = data[low:high]
+        folds.append(fold)
+
+    return folds
+assert _create_folds_list(range(12), 2) == [range(0, 6), range(6, 12)]
+assert _create_folds_list(range(8), 2) == [range(0, 4), range(4, 8)]
+assert _create_folds_list(range(25), -5) == []
+assert _create_folds_list(range(6), 2) == [range(0, 3), range(3, 6)]
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: data partitioning and slicing, learning from input-output examples
+difficulty: medium
+
+[Instruction]
+Construct a Python function `create_folds(data, count)` to create a list of folds from the given data, where each fold is a subsequence of the original data. The length of each fold should be approximately equal with at most a difference of 1. The function should satisfy the following assertion:
+
+```python
+assert create_folds(range(12), 2) == [range(0, 6), range(6, 12)]
+assert create_folds(range(8), 2) == [range(0, 4), range(4, 8)]
+assert create_folds(range(25), -5) == []
+assert create_folds(range(6), 2) == [range(0, 3), range(3, 6)]
+```
+
+[Solution]
+```python
+def create_folds(data, count):
+    if count <= 0:
+        return []
+
+    data_length = len(data)
+    fold_size = data_length // count
+    remainder = data_length % count
+
+    folds = []
+    start_index = 0
+
+    for i in range(count):
+        end_index = start_index + fold_size + (1 if i < remainder else 0)
+        folds.append(range(start_index, end_index))
+        start_index = end_index
+
+    return folds
+
+# Tests
+assert create_folds(range(12), 2) == [range(0, 6), range(6, 12)]
+assert create_folds(range(8), 2) == [range(0, 4), range(4, 8)]
+assert create_folds(range(25), -5) == []
+assert create_folds(range(6), 2) == [range(0, 3), range(3, 6)]
+```
+
+[Response]
+[Reasoning]
+To create a Python function that generates a list of folds from given data with each fold having approximately equal length (with at most a difference of 1 between any two folds), you can follow these steps:
+
+1. Return an empty list immediately if `count` is non-positive since it's not possible to create a valid number of folds.
+2. Divide the total length of the data by `count`, rounding down, to get the minimum number of items each fold should have.
+3. Calculate the remainder to see how many extra items need to be distributed among the folds. They are distributed one by one to the first `remainder` folds.
+4. Use a loop to create each fold, adjusting the starting and ending indices based on the calculations above to ensure each fold has the correct number of items.
+
+[Implementation]
+Here's how you can implement this:
+
+```python
+def create_folds(data, count):
+    # Return an empty list if count is non-positive
+    if count <= 0:
+        return []
+
+    data_length = len(data)
+    fold_size = data_length // count
+    remainder = data_length % count
+
+    folds = []
+    start_index = 0
+
+    for i in range(count):
+        # Add 1 element to each of the first `remainder` folds
+        end_index = start_index + fold_size + (1 if i < remainder else 0)
+        folds.append(range(start_index, end_index))
+        start_index = end_index
+
+    return folds
+```
+
+[Explanation]
+This implementation ensures that each fold has an equal length with at most a difference of 1 between any two folds. It handles edge cases, such as a non-positive `count`, by returning an empty list as specified.
+
+[Tests]
+You can test your code with the provided assertions to verify that the function works correctly:
+
+```python
+assert create_folds(range(12), 2) == [range(0, 6), range(6, 12)]
+assert create_folds(range(8), 2) == [range(0, 4), range(4, 8)]
+assert create_folds(range(25), -5) == []
+assert create_folds(range(6), 2) == [range(0, 3), range(3, 6)]
+```
+
+### Example 16
+[Code]
+def extract_text(obj):
+    """Extracts data, concatenates and removes html tags
+    from fields listed in a obj.related_source_fields list.
+    """
+    related_source_fields = getattr(obj._meta.model, "related_source_fields", None)
+    if not related_source_fields:
+        return
+
+    html_pieces = []
+    for source_field in related_source_fields:
+        field = source_field.get_field(obj.__class__)
+        field_value = source_field.get_value(obj)
+        if isinstance(field, StreamField):
+            field_value = " ".join(field_value)
+
+        html_pieces.append(field_value)
+
+    text = " ".join(html_pieces)
+
+    text = BeautifulSoup(text, "html5lib").text
+    return text
+
+[Property]
+category: code generation (program implementation)
+language: Python
+concepts: attribute existence check, string concatenation, HTML tag stripping, graceful error handling
+difficulty: medium
+
+[Instruction]
+I want to pull text data from certain fields of an object---these fields are named in a `related_source_fields` attribute belonging to the object's class. After concatinating the text, the function should strip out any HTML tags to leave just the clean, plain text. Also, the aforementioned attribute may or may not exist. Make sure your program handles this case gracefully.
+
+[Solution]
+
+[Response]
+You can achieve this in Python by checking if the `related_source_fields` attribute exists in the object's class, concatenates the text from the specified fields, and then strips out any HTML tags to leave just the plain text. You can use the BeautifulSoup library from `bs4` to remove HTML tags.
+
+First, ensure you have BeautifulSoup installed in your environment. If not, you can install it using pip:
+
+```sh
+pip install beautifulsoup4
+```
+
+Here's how you could implement the logic in a Python function:
+
+```python
+from typing import Any
+from bs4 import BeautifulSoup
+
+def extract_and_clean_text(obj: Any) -> str:
+    """Extract text from specified fields and clean it of HTML."""
+    # Check for 'related_source_fields' in the object's class, defaulting to an empty list if not found
+    fields = getattr(obj.__class__, 'related_source_fields', [])
+
+    # Gather text from each specified field, if the field exists in the object
+    text_pieces = []
+    for field in fields:
+        if hasattr(obj, field):
+            field_value = getattr(obj, field, '')
+            text_pieces.append(field_value)
+
+    # Combine all pieces of text into a single string and clean it of HTML tags
+    combined_text = " ".join(text_pieces)
+    cleaned_text = BeautifulSoup(combined_text, "html.parser").get_text()
+    return cleaned_text
+```
+
+In this implementation, we use `getattr` with a default value of an empty list to handle the case where `related_source_fields` is not defined. We then gather the text from each specified field, combine all pieces of text into a single string, and clean it of HTML tags using BeautifulSoup.
+
+Here's an example of how you could use this function:
+
+```python
+class ExampleClass:
+    related_source_fields = ['title', 'description']
+    title = '<h1>This is a title</h1>'
+    description = '<p>This is a <a href="#">description</a>.</p>'
+
+obj = ExampleClass()
+print(extract_and_clean_text(obj))
+```
