@@ -1,0 +1,5 @@
+datasets==2.18.0
+tree-sitter==0.20.4
+tqdm==4.65.0
+torch==2.1.2
+vllm==0.4.1
