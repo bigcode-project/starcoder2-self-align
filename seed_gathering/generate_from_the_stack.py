@@ -1,5 +1,6 @@
 from tree_sitter_parser import LANGUAGE, make_parser, node_to_string
 import datasets
+import os
 import signal
 from multiprocessing import Pool
 
@@ -140,7 +141,7 @@ def main(args):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--num_workers", type=int, default=os.cpu_count())
     parser.add_argument("--dataset", type=str,
                         default="bigcode/the-stack-dedup")
     parser.add_argument("--data_dir", type=str, default="data/python")
