@@ -243,7 +243,7 @@ def parse_property(content: str) -> Property | None:
 
 
 def get_ossinstruct_fewshots() -> Fewshot:
-    content = Path("data/self-ossinstruct-fewshot.txt").read_text().strip()
+    content = Path("prompts/self-ossinstruct-fewshot.txt").read_text().strip()
     # split according to the example tag, but exclude the tag. Strip each string.
     splits = re.split(r"### Example \d+", content)
     system_prompt = splits[0].strip()
