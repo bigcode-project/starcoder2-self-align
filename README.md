@@ -81,9 +81,9 @@ print(respond(instruction, response_prefix))
 
 ## Data generation pipeline
 
-We used VLLM's [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) for data generation. So, before running the following commands, make sure the VLLM server is running, and the associated `openai` environment variables are set.
+We used vLLM's [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) for data generation. So, before running the following commands, make sure the vLLM server is running, and the associated `openai` environment variables are set.
 
-For example, you can start an VLLM server with `docker`:
+For example, you can start an vLLM server with `docker`:
 
 ```shell
 docker run --gpus '"device=0"' \
