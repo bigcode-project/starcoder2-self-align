@@ -1,7 +1,4 @@
 [project]
-authors = [
-  {name = "Yuxiang Wei", email = "ywei40@illinois.edu"},
-]
 description = "StarCoder2-Instruct: Fully Transparent and Permissive Self-Alignment for Code Generation"
 dynamic = ["dependencies"]
 license = {text = "Apache-2.0"}

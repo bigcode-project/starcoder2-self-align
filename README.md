@@ -81,7 +81,7 @@ print(respond(instruction, response_prefix))
 
 ## Data generation pipeline
 
-> Run `pip install -e .` first to install the package locally. Check [seed_gathering/README.md](seed_gathering/README.md) for details on how we collected the seeds.
+> Run `pip install -e .` first to install the package locally. Check [seed_gathering](seed_gathering/) for details on how we collected the seeds.
 
 We used vLLM's [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) for data generation. So, before running the following commands, make sure the vLLM server is running, and the associated `openai` environment variables are set.
 
@@ -214,6 +214,10 @@ SMART=1 python src/star_align/sanitize_data.py /path/to/sanitized.jsonl /path/to
 
 The following script finetunes StarCoder2-15B-Instruct-v0.1 from the base StarCoder2-15B model. `/path/to/dataset.jsonl` is the JSONL format of the [50k dataset](https://huggingface.co/datasets/bigcode/self-oss-instruct-sc2-exec-filter-50k) we generated. You can dump the dataset to JSONL to fit the training script.
 
+<details>
+
+<summary>Click to see the training script</summary>
+
 ```shell
 MODEL_KEY=bigcode/starcoder2-15b
 LR=1e-5
@@ -245,9 +249,11 @@ accelerate launch -m magicoder.train \
     --lr_scheduler_type linear
 ```
 
+</details>
+
 ## Evaluation on EvalPlus, LiveCodeBench, and DS-1000
 
-> Check [evaluation/README.md](evaluation/README.md) for more details.
+> Check [evaluation](evaluation/) for more details.
 
 ![EvalPlus](https://huggingface.co/datasets/bigcode/starcoder2-instruct-assets/resolve/main/evalplus.png)
 
