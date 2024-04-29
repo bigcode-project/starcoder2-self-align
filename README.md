@@ -178,6 +178,8 @@ python src/star_align/execution_filter.py --response_path /path/to/response.json
 
 </details>
 
+</details>
+
 <summary>Data sanitization and selection</summary>
 
 ```shell
