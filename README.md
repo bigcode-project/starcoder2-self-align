@@ -226,7 +226,7 @@ SEQ_LEN=1280
 WARMUP_RATIO=0.05
 OUTPUT_DIR=/path/to/output_model
 DATASET_FILE=/path/to/50k-dataset.jsonl
-accelerate launch -m magicoder.train \
+accelerate launch -m star_align.train \
     --model_key $MODEL_KEY \
     --model_name_or_path $MODEL_KEY \
     --use_flash_attention True \
