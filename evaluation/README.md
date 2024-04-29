@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > **General requirements**
 >
-> Before you start, make sure you cloned the respository. Make sure you installed the required packages with `pip install -r requirements.txt`. Different package versions may impact the reproducibility of the results.
+> Before you start, make sure you have cloned the repository and you are in the **root directory of the project**. Make sure you installed the required packages with `pip install -e .`. Different package versions may impact the reproducibility of the results.
 >
 > We obtained the results with the subsequent hardware and environment:
 >
