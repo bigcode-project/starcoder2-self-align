@@ -102,7 +102,9 @@ export OPENAI_API_KEY="EMPTY"
 export OPENAI_BASE_URL="http://localhost:10000/v1/"
 ```
 
-### Snippet to concept
+<details>
+
+<summary>**Snippet to concepts generation**</summary>
 
 ```shell
 python src/star_align/self_ossinstruct.py \
@@ -118,7 +120,11 @@ python src/star_align/self_ossinstruct.py \
     --num_sample_per_request 1
 ```
 
-### Concept to instruction
+</details>
+
+<details>
+
+<summary>**Concepts to instruction generation**</summary>
 
 ```shell
 python src/star_align/self_ossinstruct.py \
@@ -134,7 +140,11 @@ python src/star_align/self_ossinstruct.py \
     --num_batched_request 32
 ```
 
-### Instruction to response w/ self-validation code
+</details>
+
+<details>
+
+<summary>**Instruction to response (with self-validation code) generation**</summary>
 
 ```shell
 python src/star_align/self_ossinstruct.py \
@@ -150,7 +160,11 @@ python src/star_align/self_ossinstruct.py \
     --temperature 0.7
 ```
 
-### Execution filter
+</details>
+
+<details>
+
+<summary>**Execution filter**</summary>
 
 > [!WARNING]
 > Though we implemented reliability guards, it is highly recommended to run execution in a sandbox environment. The command below doesn't provide sandboxing by default.
@@ -162,7 +176,9 @@ python src/star_align/execution_filter.py --response_path /path/to/response.json
 # Note that filtered.jsonl may contain multiple passing samples for the same instruction which needs further selection.
 ```
 
-### Data sanitization and selection
+</details>
+
+<summary>**Data sanitization and selection**</summary>
 
 ```shell
 RAW=1 python src/star_align/sanitize_data.py /path/to/filtered.jsonl /path/to/sanitized.jsonl
@@ -170,17 +186,7 @@ python src/star_align/clean_data.py --data_files /path/to/sanitized.jsonl --outp
 SMART=1 python src/star_align/sanitize_data.py /path/to/sanitized.jsonl /path/to/sanitized.jsonl
 ```
 
-## Bias, Risks, and Limitations
-
-StarCoder2-15B-Instruct-v0.1 is primarily finetuned for Python code generation tasks that can be verified through execution, which may lead to certain biases and limitations. For example, the model might not adhere strictly to instructions that dictate the output format. In these situations, it's beneficial to provide a **response prefix** or a **one-shot example** to steer the model’s output. Additionally, the model may have limitations with other programming languages and out-of-domain coding tasks.
-
-The model also inherits the bias, risks, and limitations from its base StarCoder2-15B model. For more information, please refer to the [StarCoder2-15B model card](https://huggingface.co/bigcode/starcoder2-15b).
-
-## Evaluation on EvalPlus, LiveCodeBench, and DS-1000
-
-![EvalPlus](https://huggingface.co/datasets/bigcode/starcoder2-instruct-assets/resolve/main/evalplus.png)
-
-![LiveCodeBench and DS-1000](https://huggingface.co/datasets/bigcode/starcoder2-instruct-assets/resolve/main/lcb-ds1000.png)
+</details>
 
 ## Training Details
 
@@ -198,3 +204,15 @@ The model also inherits the bias, risks, and limitations from its base StarCoder
 ### Hardware
 
 1 x NVIDIA A100 80GB
+
+## Bias, Risks, and Limitations
+
+StarCoder2-15B-Instruct-v0.1 is primarily finetuned for Python code generation tasks that can be verified through execution, which may lead to certain biases and limitations. For example, the model might not adhere strictly to instructions that dictate the output format. In these situations, it's beneficial to provide a **response prefix** or a **one-shot example** to steer the model’s output. Additionally, the model may have limitations with other programming languages and out-of-domain coding tasks.
+
+The model also inherits the bias, risks, and limitations from its base StarCoder2-15B model. For more information, please refer to the [StarCoder2-15B model card](https://huggingface.co/bigcode/starcoder2-15b).
+
+## Evaluation on EvalPlus, LiveCodeBench, and DS-1000
+
+![EvalPlus](https://huggingface.co/datasets/bigcode/starcoder2-instruct-assets/resolve/main/evalplus.png)
+
+![LiveCodeBench and DS-1000](https://huggingface.co/datasets/bigcode/starcoder2-instruct-assets/resolve/main/lcb-ds1000.png)
