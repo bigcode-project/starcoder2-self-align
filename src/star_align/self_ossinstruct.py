@@ -95,11 +95,11 @@ class Property:
         category = random.choice(
             [
                 "code generation (function implementation)",
-                "code generation (class implementation)",
-                "code generation (program implementation)",
+                # "code generation (class implementation)",
+                # "code generation (program implementation)",
             ]
         )
-        difficulty = random.choice(["medium", "hard"])
+        difficulty = random.choice(["easy", "medium", "hard"])
         return Property(
             category=category,
             language=language,
