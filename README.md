@@ -1,4 +1,4 @@
-# StarCoder2-Instruct: Self-Aligned, Transparent, and Fully Permissive
+# StarCoder2-Instruct: Fully Transparent and Permissive Self-Alignment for Code Generation
 
 <p align="left">
     ⭐️&nbsp;<a href="#about">About</a>
