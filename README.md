@@ -3,7 +3,7 @@
 <p align="left">
     ⭐️&nbsp;<a href="#about">About</a>
     | 🚀&nbsp;<a href="#quick-start">Quick start</a>
-    | 📚&nbsp;<a href="#data-generation-pipeline">Pipeline</a>
+    | 📚&nbsp;<a href="#data-generation-pipeline">Data generation</a>
     | 🧑‍💻&nbsp;<a href="#training-details">Training</a>
     | 📊&nbsp;<a href="#evaluation-on-evalplus-livecodebench-and-ds-1000">Evaluation</a>
     | ⚠️&nbsp;<a href="#bias-risks-and-limitations">Limitations</a>
@@ -80,6 +80,8 @@ print(respond(instruction, response_prefix))
 ```
 
 ## Data generation pipeline
+
+> Run `pip install -e .` first to install the package locally. Check [seed_gathering/README.md](seed_gathering/README.md) for details on how we collected the seeds.
 
 We used vLLM's [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) for data generation. So, before running the following commands, make sure the vLLM server is running, and the associated `openai` environment variables are set.
 
@@ -191,6 +193,8 @@ SMART=1 python src/star_align/sanitize_data.py /path/to/sanitized.jsonl /path/to
 
 ## Training Details
 
+> Run `pip install -e .` first to install the package locally. And install [Flash Attention](https://github.com/Dao-AILab/flash-attention) to speed up the training.
+
 ### Hyperparameters
 
 - **Optimizer:** Adafactor
@@ -204,9 +208,46 @@ SMART=1 python src/star_align/sanitize_data.py /path/to/sanitized.jsonl /path/to
 
 ### Hardware
 
-1 x NVIDIA A100 80GB
+1 x NVIDIA A100 80GB. Yes, you just need one A100 to finetune StarCoder2-15B!
+
+### Script
+
+The following script finetunes StarCoder2-15B-Instruct-v0.1 from the base StarCoder2-15B model. `/path/to/dataset.jsonl` is the JSONL format of the [50k dataset](https://huggingface.co/datasets/bigcode/self-oss-instruct-sc2-exec-filter-50k) we generated. You can dump the dataset to JSONL to fit the training script.
+
+```shell
+MODEL_KEY=bigcode/starcoder2-15b
+LR=1e-5
+EPOCH=4
+SEQ_LEN=1280
+WARMUP_RATIO=0.05
+OUTPUT_DIR=/path/to/output_model
+DATASET_FILE=/path/to/50k-dataset.jsonl
+accelerate launch -m magicoder.train \
+    --model_key $MODEL_KEY \
+    --model_name_or_path $MODEL_KEY \
+    --use_flash_attention True \
+    --datafile_paths $DATASET_FILE \
+    --output_dir $OUTPUT_DIR \
+    --bf16 True \
+    --num_train_epochs $EPOCH \
+    --max_training_seq_length $SEQ_LEN \
+    --pad_to_max_length False \
+    --per_device_train_batch_size 1 \
+    --gradient_accumulation_steps 64 \
+    --group_by_length False \
+    --ddp_find_unused_parameters False \
+    --logging_steps 1 \
+    --log_level info \
+    --optim adafactor \
+    --max_grad_norm -1 \
+    --warmup_ratio $WARMUP_RATIO \
+    --learning_rate $LR \
+    --lr_scheduler_type linear
+```
 
 ## Evaluation on EvalPlus, LiveCodeBench, and DS-1000
+
+> Check [evaluation/README.md](evaluation/README.md) for more details.
 
 ![EvalPlus](https://huggingface.co/datasets/bigcode/starcoder2-instruct-assets/resolve/main/evalplus.png)
 

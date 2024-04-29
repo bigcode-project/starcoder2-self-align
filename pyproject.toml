@@ -1,0 +1,28 @@
+[project]
+authors = [
+  {name = "Yuxiang Wei", email = "ywei40@illinois.edu"},
+]
+description = "StarCoder2-Instruct: Fully Transparent and Permissive Self-Alignment for Code Generation"
+dynamic = ["dependencies"]
+license = {text = "Apache-2.0"}
+name = "star_align"
+readme = "README.md"
+requires-python = ">=3.10"
+version = "0.1.0"
+
+[tool.setuptools.packages.find]
+include = ["star_align*"]
+where = ["src"]
+
+[tool.black]
+include = '\.pyi?$'
+line-length = 88
+target-version = ["py310"]
+
+[tool.isort]
+line_length = 88
+profile = "black"
+skip_gitignore = true
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
