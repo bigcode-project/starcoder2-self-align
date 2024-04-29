@@ -1,5 +1,14 @@
 # StarCoder2-Instruct: Self-Aligned, Transparent, and Fully Permissive
 
+<p align="left">
+    ⭐️&nbsp;<a href="#about">About</a>
+    | 🚀&nbsp;<a href="#quick-start">Quick start</a>
+    | 📚&nbsp;<a href="#data-generation-pipeline">Pipeline</a>
+    | 🧑‍💻&nbsp;<a href="#training-details">Training</a>
+    | 📊&nbsp;<a href="#evaluation-on-evalplus-livecodebench-and-ds-1000">Evaluation</a>
+    | ⚠️&nbsp;<a href="#bias-risks-and-limitations">Limitations</a>
+</p>
+
 ![Banner](https://huggingface.co/datasets/bigcode/starcoder2-instruct-assets/resolve/main/banner.png)
 
 <!-- 
@@ -179,9 +188,3 @@ The model also inherits the bias, risks, and limitations from its base StarCoder
 ### Hardware
 
 1 x NVIDIA A100 80GB
-
-## Resources
-
-- **Model:** [bigcode/starCoder2-15b-instruct-v0.1](https://huggingface.co/bigcode/starcoder2-instruct-15b-v0.1)
-- **Code:** [bigcode-project/starcoder2-self-align](https://github.com/bigcode-project/starcoder2-self-align)
-- **Dataset:** [bigcode/self-oss-instruct-sc2-exec-filter-50k](https://huggingface.co/datasets/bigcode/self-oss-instruct-sc2-exec-filter-50k/)
