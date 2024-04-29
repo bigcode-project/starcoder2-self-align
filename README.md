@@ -22,6 +22,16 @@ We introduce StarCoder2-15B-Instruct-v0.1, the very first entirely self-aligned 
 - **Model:** [bigcode/starcoder2-15b-instruct-v0.1](https://huggingface.co/bigcode/starcoder2-instruct-15b-v0.1)
 - **Code:** [bigcode-project/starcoder2-self-align](https://github.com/bigcode-project/starcoder2-self-align)
 - **Dataset:** [bigcode/self-oss-instruct-sc2-exec-filter-50k](https://huggingface.co/datasets/bigcode/self-oss-instruct-sc2-exec-filter-50k/)
+- **Authors:**
+[Yuxiang Wei](https://yuxiang.cs.illinois.edu),
+[Federico Cassano](https://federico.codes/),
+[Jiawei Liu](https://jw-liu.xyz),
+[Yifeng Ding](https://yifeng-ding.com),
+[Naman Jain](https://naman-ntc.github.io),
+[Harm de Vries](https://www.harmdevries.com),
+[Leandro von Werra](https://twitter.com/lvwerra),
+[Arjun Guha](https://www.khoury.northeastern.edu/home/arjunguha/main/home/),
+[Lingming Zhang](https://lingming.cs.illinois.edu).
 
 ![self-alignment pipeline](https://huggingface.co/datasets/bigcode/starcoder2-instruct-assets/resolve/main/method.png)
 
