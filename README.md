@@ -166,8 +166,7 @@ python src/star_align/self_ossinstruct.py \
 
 <summary>Execution filter</summary>
 
-> [!WARNING]
-> Though we implemented reliability guards, it is highly recommended to run execution in a sandbox environment. The command below doesn't provide sandboxing by default.
+> **Warning:** Though we implemented reliability guards, it is highly recommended to run execution in a sandbox environment. The command below doesn't provide sandboxing by default.
 
 ```shell
 python src/star_align/execution_filter.py --response_path /path/to/response.jsonl --result_path /path/to/filtered.jsonl
