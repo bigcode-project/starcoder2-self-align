@@ -104,7 +104,7 @@ export OPENAI_BASE_URL="http://localhost:10000/v1/"
 
 <details>
 
-<summary>**Snippet to concepts generation**</summary>
+<summary>Snippet to concepts generation</summary>
 
 ```shell
 python src/star_align/self_ossinstruct.py \
@@ -124,7 +124,7 @@ python src/star_align/self_ossinstruct.py \
 
 <details>
 
-<summary>**Concepts to instruction generation**</summary>
+<summary>Concepts to instruction generation</summary>
 
 ```shell
 python src/star_align/self_ossinstruct.py \
@@ -144,7 +144,7 @@ python src/star_align/self_ossinstruct.py \
 
 <details>
 
-<summary>**Instruction to response (with self-validation code) generation**</summary>
+<summary>Instruction to response (with self-validation code) generation</summary>
 
 ```shell
 python src/star_align/self_ossinstruct.py \
@@ -164,7 +164,7 @@ python src/star_align/self_ossinstruct.py \
 
 <details>
 
-<summary>**Execution filter**</summary>
+<summary>Execution filter</summary>
 
 > [!WARNING]
 > Though we implemented reliability guards, it is highly recommended to run execution in a sandbox environment. The command below doesn't provide sandboxing by default.
@@ -178,7 +178,7 @@ python src/star_align/execution_filter.py --response_path /path/to/response.json
 
 </details>
 
-<summary>**Data sanitization and selection**</summary>
+<summary>Data sanitization and selection</summary>
 
 ```shell
 RAW=1 python src/star_align/sanitize_data.py /path/to/filtered.jsonl /path/to/sanitized.jsonl
