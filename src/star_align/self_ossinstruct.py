@@ -36,6 +36,7 @@ class Args:
     model: str
     instruct_mode: InstructMode
 
+    use_vllm_server: bool = field(default=True)
     seed_code_start_index: int = field(default=0)
     continue_from: str | None = field(default=None)
 
@@ -249,9 +250,7 @@ def get_ossinstruct_fewshots() -> Fewshot:
     system_prompt = splits[0].strip()
     # "I->R", "E->S", "I->I", "PI->PI", "S->C"
     sys_pattern = r"### System: I->R|### System: C->I|### System: S->C"
-    _, i_r, c_i, s_c = list(
-        map(str.strip, re.split(sys_pattern, system_prompt))
-    )
+    _, i_r, c_i, s_c = list(map(str.strip, re.split(sys_pattern, system_prompt)))
     # system_prompt = re.split(r"### System: Instruction", system_prompt)[1]
     # instruction_system_prompt, response_system_prompt = system_prompt.split(
     #     "### System: Response"
@@ -332,7 +331,8 @@ def get_readable_prefix(instruct_mode: InstructMode, example: dict) -> str:
 
 async def main():
     args = cast(Args, HfArgumentParser(Args).parse_args_into_dataclasses()[0])
-    openai_client = star_align.utils.OpenAIClient()
+    if args.use_vllm_server:
+        openai_client = star_align.utils.OpenAIClient()
 
     raw_dataset: Dataset = load_dataset(
         "json",
@@ -392,6 +392,37 @@ async def main():
     )
     pbar = tqdm(chunked_dataset)
     n_succeeded = 0
+
+    if not args.use_vllm_server:
+        from vllm import LLM, SamplingParams, RequestOutput
+        from openai.types import CompletionChoice, Completion
+        import torch
+
+        engine = LLM(args.model, tensor_parallel_size=torch.cuda.device_count())
+
+        def vllm_response_to_openai(response: RequestOutput) -> Completion:
+            created = 0
+            choices = list[CompletionChoice]()
+            for output in response.outputs:
+                choice = CompletionChoice(
+                    text=output.text,
+                    index=0,
+                    finish_reason=(
+                        "stop" if output.finish_reason == "stop" else "length"
+                    ),
+                )
+                choices.append(choice)
+            model = "not-specified"
+            id = response.request_id
+            return Completion(
+                id=id,
+                created=created,
+                object="text_completion",
+                model=model,
+                choices=choices,
+                system_fingerprint="None",
+            )
+
     for chunk_index, examples in enumerate(pbar):
         # map to the index in the original seed snippets
         effective_index = (
@@ -429,12 +460,24 @@ async def main():
             request_params.append(params)
         assert len(request_params) == len(examples)
         print(f"Ready to make {len(request_params)} requests")
-        dispatch_requests = (
-            openai_client.dispatch_chat_completions
-            if args.prompting_mode == "chat"
-            else openai_client.dispatch_completions
-        )
-        responses = await dispatch_requests(request_params, delay=args.delay)
+        if args.use_vllm_server:
+            dispatch_requests = (
+                openai_client.dispatch_chat_completions
+                if args.prompting_mode == "chat"
+                else openai_client.dispatch_completions
+            )
+            responses = await dispatch_requests(request_params, delay=args.delay)
+        else:
+            sampling_params = SamplingParams(
+                temperature=args.temperature,
+                max_tokens=args.max_output_tokens,
+                seed=args.seed + effective_index,
+                n=args.num_sample_per_request,
+                stop=["## Example"],
+            )
+            vllm_responses = engine.generate(all_prompts, sampling_params)
+            responses = list(map(vllm_response_to_openai, vllm_responses))
+
         assert len(examples) == len(responses)
         for prompt, example, response in zip(all_prompts, examples, responses):
             if isinstance(response, BaseException):

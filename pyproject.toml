@@ -23,3 +23,11 @@ skip_gitignore = true
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+
+[tool.mypy]
+check_untyped_defs = true
+follow_imports = "silent"
+ignore_missing_imports = true
+mypy_path = "src"
+packages = ["star_align"]
+python_version = "3.10"
