@@ -103,6 +103,8 @@ def extract_code(response):
 def main(
     response_path: str,
     result_path: str,
+    # NOTE: the higher the faster, but less reliable. 5000 is a good default.
+    max_batched_tasks: int = cpu_count(),
     max_workers: int = cpu_count(),
     cache_path: str | None = None,
     container_server=None,
@@ -144,7 +146,7 @@ def main(
     # Split cached/un-cached data
     active_tasks = []
     cached_tasks = []
-    for task in tqdm(all_tasks):
+    for task in tqdm(all_tasks, desc="Preprocessing: flattening tasks"):
         _, _, code, _ = task
         if cache_path is not None and code in hit_code:
             cached_tasks.append(task)
@@ -167,19 +169,13 @@ def main(
     run_func = containerized_run if container_server else fork_run
 
     nfails = 0
-    tasks_chunks = chunked(active_tasks, os.cpu_count())
+    tasks_chunks = chunked(active_tasks, max_batched_tasks)
     with open(result_path, "a") as f:
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             for chunked_tasks in tqdm(tasks_chunks):
                 futures = [executor.submit(run_func, task) for task in chunked_tasks]
-                # for idx, presults in tqdm(tasks):
-                #     futures = [
-                #         executor.submit(fork_run, (i, pres))
-                #         for i, pres in enumerate(presults)
-                #     ]
-                #     passed_indices = []
                 # NOTE: futures do not return in the same order as before
-                for future in tqdm(as_completed(futures), total=len(futures)):
+                for future in tqdm(as_completed(futures), total=len(futures), leave=False):
                     try:
                         future_result = future.result()
                         if future_result is None:
