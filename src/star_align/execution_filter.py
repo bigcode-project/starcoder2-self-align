@@ -89,7 +89,7 @@ def is_compilable(code):
     try:
         ast.parse(code)
         return True
-    except SyntaxError:
+    except (SyntaxError, ValueError):
         return False
 
 
