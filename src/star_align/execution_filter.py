@@ -167,7 +167,7 @@ def main(
     run_func = containerized_run if container_server else fork_run
 
     nfails = 0
-    tasks_chunks = chunked(active_tasks, 10000)
+    tasks_chunks = chunked(active_tasks, os.cpu_count())
     with open(result_path, "a") as f:
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             for chunked_tasks in tqdm(tasks_chunks):
