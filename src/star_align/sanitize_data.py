@@ -182,6 +182,7 @@ def filter_x(x):
         x["instruction"] = f"{x['instruction']}\n\n{assertion_str}"
     if removing_comments:
         x["response"] = remove_comments_from_code_blocks(x["response"])
+    x["tests"] = tests
     # for tag in tags:
     #     x["response"] = x["response"].replace(f"{tag}\n", "")
     return True
