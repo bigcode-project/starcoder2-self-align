@@ -95,9 +95,9 @@ class Property:
     def random_exercise(concepts: list[str], language: str) -> "Property":
         category = random.choice(
             [
-                "function implementation",
-                "class implementation",
-                "program implementation",
+                "code generation (function implementation)",
+                "code generation (class implementation)",
+                "code generation (program implementation)",
             ]
         )
         # difficulty = random.choice(["easy", "medium", "hard"])

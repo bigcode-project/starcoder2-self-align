@@ -25,7 +25,7 @@ def _split_into_chunks(value):
         value >>= 5
 
 [Property]
-category: function implementation
+category: code generation (function implementation)
 language: Python
 concepts: 5-bit chunk encoding with bitwise shifts, ASCII value manipulation, continuation bit signaling
 
@@ -100,7 +100,7 @@ def ceil_shift(n, b):
     else:
 
 [Property]
-category: function implementation
+category: code generation (function implementation)
 language: Python
 concepts: bitwise operation for division, ceiling without division or float, input validation with assertions, non-negative integer checks
 
@@ -176,7 +176,7 @@ def prime(x):
         lastn = lastn + 1                       # Check the next number
 
 [Property]
-category: class implementation
+category: code generation (class implementation)
 language: Python
 concepts: prime number memoization, n-th prime calculation, efficiency in prime checks
 
@@ -268,7 +268,7 @@ def multiset_powerset(multiset):
         while i >= 0 and not changed:
 
 [Property]
-category: function implementation
+category: code generation (function implementation)
 language: Python
 concepts: special formula implementation, odd and even number handling, function composition
 
@@ -342,7 +342,7 @@ def tripletsSorting(nums, t):
     for i in range(len(nums)):
 
 [Property]
-category: function implementation
+category: code generation (function implementation)
 language: Python
 concepts: insertion point for a sorted array, optimized time complexity
 
@@ -423,7 +423,7 @@ def decompress(self):
     return bytes(res)
 
 [Property]
-category: class and function implementation
+category: code generation (class and function implementation)
 language: Python
 concepts: decoding Huffman compressed data, binary tree traversal, byte array processing
 
@@ -499,7 +499,7 @@ assert format_size(1024**2 - 1) == '1024.0KB'
 assert format_size(1024*512) == '512.0KB'
 
 [Property]
-category: function implementation
+category: code generation (function implementation)
 language: Python
 concepts: arithmetic operations for size conversion, rounding numbers, dynamic unit selection, string interpolation
 
@@ -562,7 +562,7 @@ def unify_stringlist(L: list):
 assert unify_stringlist(list("abc")) == list("abc")
 
 [Property]
-category: function implementation
+category: code generation (function implementation)
 language: Python
 concepts: list comprehension, unique string creation, precondition checking for type validation
 
@@ -622,7 +622,7 @@ def _create_folds_list(data, count):
     return folds
 
 [Property]
-category: function implementation
+category: code generation (function implementation)
 language: Python
 concepts: data partitioning and slicing, learning from input-output examples
 
