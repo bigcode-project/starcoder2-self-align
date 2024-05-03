@@ -1,29 +1,31 @@
-import datasets
-import os
-from tree_sitter_parser import global_parser, LANGUAGE, does_have_return, make_parser
-import benchmark_data
-from tqdm import tqdm
-import torch
 import argparse
-from vllm import LLM, SamplingParams
+import os
 import random
 
+import benchmark_data
+import datasets
+import torch
+from tqdm import tqdm
+from tree_sitter_parser import LANGUAGE, does_have_return, global_parser, make_parser
+from vllm import LLM, SamplingParams
+
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, required=True)
-parser.add_argument('--model', type=str,
-                    default="bigcode/starcoder2-15b")
-parser.add_argument('--batch-size', type=int, default=512)
-parser.add_argument('--sample-size', type=int, default=None)
-parser.add_argument('--num-gpus', type=int, default=1)
-parser.add_argument('--content_col', type=str, default="content")
-parser.add_argument('--push', type=str, required=True)
+parser.add_argument("--dataset", type=str, required=True)
+parser.add_argument("--model", type=str, default="bigcode/starcoder2-15b")
+parser.add_argument("--batch-size", type=int, default=512)
+parser.add_argument("--sample-size", type=int, default=None)
+parser.add_argument("--num-gpus", type=int, default=1)
+parser.add_argument("--content_col", type=str, default="content")
+parser.add_argument("--push", type=str, required=True)
 args = parser.parse_args()
 random.seed(42)
 
-FN_BLOCK_QUERY = LANGUAGE.query("""
+FN_BLOCK_QUERY = LANGUAGE.query(
+    """
 (function_definition
   body: (block) @fn-block)
-""")
+"""
+)
 
 
 def template_few_shot(code, answer, rationale):
@@ -95,7 +97,8 @@ def coerce_integer(df):
         "Yes",
         "The docstring does seem to match the implementation! The function loops through the columns of a df and coerces it as explained.",
     ),
-    ('''def __trans_df_into_dict(data):
+    (
+        '''def __trans_df_into_dict(data):
     """Converte DataFrame to dictionary.
 
     Args:
@@ -113,9 +116,9 @@ def coerce_integer(df):
     fname_dict = dict(zip(data["en_name_f"], data["jp_name_f"]))
     lname_dict = dict(zip(data["en_name_l"], data["jp_name_l"]))
     return fullname_dict, fname_dict, lname_dict''',
-     "No",
-     "The function__trans_df_into_dict  does indeed convert a dataframe into a dictionary, however, it converts various columns that were not described in the docstring.\nFor instance, nowhere in the docstring it mentions handling japanese characters or the name of the column.",
-     ),
+        "No",
+        "The function__trans_df_into_dict  does indeed convert a dataframe into a dictionary, however, it converts various columns that were not described in the docstring.\nFor instance, nowhere in the docstring it mentions handling japanese characters or the name of the column.",
+    ),
     (
         '''def inchesToMeters(inches):
     """Convert inches to meters."""
@@ -123,7 +126,8 @@ def coerce_integer(df):
         "Yes",
         "inchesToMeters is a very simple function, the doccstring explains concisely its purpose, which is of converting inches to meters.",
     ),
-    ('''def square_crop(im, target_size=None):
+    (
+        '''def square_crop(im, target_size=None):
   """ Crop image to `target_size`. If that's None the image is squared
   to the smallest size
   """
@@ -137,10 +141,11 @@ def coerce_integer(df):
   dy = (h - target_size) / 2
 
   return im.crop((dx, dy, dx + target_size, dy + target_size))''',
-     "Yes",
-     "Following the standard description for docstrings for functions and methods, the square_crop function description tells exactly what the function does."
-     ),
-    ('''def _setup_motifs_files(args):
+        "Yes",
+        "Following the standard description for docstrings for functions and methods, the square_crop function description tells exactly what the function does.",
+    ),
+    (
+        '''def _setup_motifs_files(args):
     """convenience fn, make sure setup is same across
     multiplicity/orientation/spacing workflows
     """
@@ -156,10 +161,11 @@ def coerce_integer(df):
         args.inputs["inference"][args.cluster]["scanmotifs_late_dir"])
 
     return motifs_files''',
-     "No",
-     "The docstring for _setup_motifs_files just says this is a convenience function. There is definitely not enough information to re-implement this function from the docstring alone.",
-     ),
-    ('''def trip(u, v):
+        "No",
+        "The docstring for _setup_motifs_files just says this is a convenience function. There is definitely not enough information to re-implement this function from the docstring alone.",
+    ),
+    (
+        '''def trip(u, v):
     """
     Returns the scalar triple product of vectors u and v and z axis.
     The convention is z dot (u cross v). Dotting with the z axis simplifies
@@ -173,9 +179,9 @@ def coerce_integer(df):
     Essentially trip is the z component of the cross product of u x v
     """
     return (u[0] * v[1] - u[1] * v[0])''',
-     "Yes",
-     "The docstring for the trip function is very detailed and describes the function's purpose and the mathematical formula used to calculate the scalar triple product.",
-     )
+        "Yes",
+        "The docstring for the trip function is very detailed and describes the function's purpose and the mathematical formula used to calculate the scalar triple product.",
+    ),
 ]
 
 
@@ -227,22 +233,31 @@ dataset = datasets.load_dataset(args.dataset, split="train")
 print(f"Loaded {len(dataset)} examples. Running pre-filtering...")
 
 BAD_WORDS = ["todo", "fixme", "bug"]
-BAD_IMPORTS = ["argparse", "os", "subprocess", "sys", "setuptools",
-               "distutils", "matplotlib", "seaborn"]
-BAD_IMPORTS = [f"import {b}" for b in BAD_IMPORTS] + \
-    [f"from {b}" for b in BAD_IMPORTS]
+BAD_IMPORTS = [
+    "argparse",
+    "os",
+    "subprocess",
+    "sys",
+    "setuptools",
+    "distutils",
+    "matplotlib",
+    "seaborn",
+]
+BAD_IMPORTS = [f"import {b}" for b in BAD_IMPORTS] + [f"from {b}" for b in BAD_IMPORTS]
 BAD_SUBSTRINGS = BAD_WORDS + BAD_IMPORTS
 
 bench_filter = benchmark_data.filter_out()
-all_bench = bench_filter["human_eval_docstrings"] + \
-    bench_filter["human_eval_solutions"] + \
-    bench_filter["mbpp_docstrings"] + \
-    bench_filter["mbpp_solutions"]
+all_bench = (
+    bench_filter["human_eval_docstrings"]
+    + bench_filter["human_eval_solutions"]
+    + bench_filter["mbpp_docstrings"]
+    + bench_filter["mbpp_solutions"]
+)
 
 
 def pre_filtering(ex):
     code = ex[args.content_col]
-    code_bytes = code.encode('utf-8')
+    code_bytes = code.encode("utf-8")
 
     # filter out bad substrings
     lower = code.lower()
@@ -277,11 +292,14 @@ def pre_filtering(ex):
 
         # get the docstring, filter if not a docstring
         exp = block.children[0]
-        if not exp.type == 'expression_statement' and not exp.children[0].type == 'string':
+        if (
+            not exp.type == "expression_statement"
+            and not exp.children[0].type == "string"
+        ):
             return False
 
         docstring = exp.children[0]
-        docstring_text = docstring.text.decode('utf-8')
+        docstring_text = docstring.text.decode("utf-8")
         if not docstring_text.startswith('"""') and not docstring_text.endswith('"""'):
             return False
     except Exception as e:
@@ -294,8 +312,12 @@ def pre_filtering(ex):
 threads = os.cpu_count() - 1  # type: ignore
 dataset = dataset.filter(pre_filtering, num_proc=threads)
 
-model = LLM(args.model, dtype=auto_dtype(),
-            gpu_memory_utilization=0.95, tensor_parallel_size=args.num_gpus)
+model = LLM(
+    args.model,
+    dtype=auto_dtype(),
+    gpu_memory_utilization=0.95,
+    tensor_parallel_size=args.num_gpus,
+)
 tokenizer = model.get_tokenizer()
 
 if args.sample_size is not None:
@@ -309,31 +331,34 @@ print(f"Now running stage 3 filtering on {len(dataset)} examples...")
 def unindent(s):
     lines = s.splitlines()
     non_blank_lines = [line for line in lines if line.strip()]
-    min_indent = min(len(line) - len(line.lstrip())
-                     for line in non_blank_lines) if non_blank_lines else 0
-    unindented_lines = [line[min_indent:] if len(
-        line) >= min_indent else line for line in lines]
-    return '\n'.join(unindented_lines)
+    min_indent = (
+        min(len(line) - len(line.lstrip()) for line in non_blank_lines)
+        if non_blank_lines
+        else 0
+    )
+    unindented_lines = [
+        line[min_indent:] if len(line) >= min_indent else line for line in lines
+    ]
+    return "\n".join(unindented_lines)
 
 
 def py_extract_docstring(code):
     first_doc = code.find('"""')
     assert first_doc != -1
     first_doc = first_doc + 3
-    second_doc = code[first_doc+1:].find('"""')
+    second_doc = code[first_doc + 1 :].find('"""')
     assert second_doc != -1
     second_doc = second_doc + first_doc + 1
     doc = code[first_doc:second_doc]
     doc = unindent(doc).strip()
-    code = code[:first_doc-3] + code[second_doc+3:]
+    code = code[: first_doc - 3] + code[second_doc + 3 :]
     return doc, code
 
 
 # this is such a hack, but it works
 dummy = 'def dummy(): \n    """\n    """\n pass'
 dummy_prompt = prompt_fmt(dummy)
-few_shot_toks = len(tokenizer.encode(
-    dummy_prompt)) - len(tokenizer.encode(dummy))
+few_shot_toks = len(tokenizer.encode(dummy_prompt)) - len(tokenizer.encode(dummy))
 print(f"Few-shot prompt has {few_shot_toks} tokens")
 prompts = []
 for ex in tqdm(dataset, total=len(dataset), desc="Generating prompts"):
@@ -349,8 +374,9 @@ for ex in tqdm(dataset, total=len(dataset), desc="Generating prompts"):
 
 responses = []
 for chunk in tqdm(chunkify(prompts, args.batch_size), desc="Generating responses"):
-    outs = model.generate(chunk, SamplingParams(
-        temperature=0.0, stop="\n", max_tokens=5))
+    outs = model.generate(
+        chunk, SamplingParams(temperature=0.0, stop="\n", max_tokens=5)
+    )
     contents = [o.outputs[0].text for o in outs]
     for c in contents:
         yes_count = c.lower().count("yes")
@@ -365,6 +391,8 @@ for chunk in tqdm(chunkify(prompts, args.batch_size), desc="Generating responses
 
 
 new_ds = dataset.filter(  # horrible hack!
-    lambda ex, i: responses[i] and "def dummy()" not in ex[args.content_col], with_indices=True)
+    lambda ex, i: responses[i] and "def dummy()" not in ex[args.content_col],
+    with_indices=True,
+)
 print(f"Filtered {len(dataset) - len(new_ds)} examples")
 new_ds.push_to_hub(args.push, private=True)

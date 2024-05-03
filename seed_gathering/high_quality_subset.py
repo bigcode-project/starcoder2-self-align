@@ -1,18 +1,20 @@
-import datasets
-import subprocess
-import tempfile
-import signal
+import argparse
 import hashlib
 import os
-import argparse
-from typing import List, Dict
-from tqdm import tqdm
+import signal
+import subprocess
+import tempfile
+from typing import Dict, List
 
+import datasets
+from tqdm import tqdm
 from tree_sitter_parser import LANGUAGE, global_parser
 
-RETURN_QUERY = LANGUAGE.query("""
+RETURN_QUERY = LANGUAGE.query(
+    """
 (return_statement) @return
-""")
+"""
+)
 
 
 def does_have_return(src):
@@ -100,8 +102,10 @@ def infer_imports(code: str) -> str:
     import autoimport
 
     try:
+
         def handler(signum, frame):
             raise Exception("Timeout")
+
         signal.signal(signal.SIGALRM, handler)
         signal.alarm(10)
         inferred = autoimport.fix_code(code)
@@ -114,17 +118,17 @@ def infer_imports(code: str) -> str:
 
 
 def main(args):
-    ds = datasets.load_dataset(args.dataset,
-                               data_dir="data", split="train")
+    ds = datasets.load_dataset(args.dataset, data_dir="data", split="train")
 
     print("Filtering to only functions with return statements")
-    ds = ds.filter(lambda ex: does_have_return(
-        ex["content"]), num_proc=os.cpu_count())
+    ds = ds.filter(lambda ex: does_have_return(ex["content"]), num_proc=os.cpu_count())
 
     if args.infer_imports:
         print("Inferring imports for functions")
-        ds = ds.map(lambda ex: {"content": infer_imports(
-            ex["content"])}, num_proc=os.cpu_count())
+        ds = ds.map(
+            lambda ex: {"content": infer_imports(ex["content"])},
+            num_proc=os.cpu_count(),
+        )
 
     batch = []
     max_i = len(ds) - 1
@@ -162,14 +166,20 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str,
-                        help="Points to dataset of python functions with docstrings. Columns: 'content'",
-                        required=True)
     parser.add_argument(
-        "--push", type=str, required=True, help="Push to this dataset to which repo")
+        "--dataset",
+        type=str,
+        help="Points to dataset of python functions with docstrings. Columns: 'content'",
+        required=True,
+    )
     parser.add_argument(
-        "--infer-imports", action="store_true", help="Infer imports for functions")
+        "--push", type=str, required=True, help="Push to this dataset to which repo"
+    )
     parser.add_argument(
-        "--batch-size", type=int, default=250, help="Batch size for typechecking")
+        "--infer-imports", action="store_true", help="Infer imports for functions"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=250, help="Batch size for typechecking"
+    )
     args = parser.parse_args()
     main(args)

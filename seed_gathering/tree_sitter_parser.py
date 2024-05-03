@@ -1,17 +1,14 @@
 from tree_sitter import Language, Parser
 
-Language.build_library(
-    'build/lang.so',
-    [
-        './tree-sitter-python'
-    ]
-)
-LANGUAGE = Language('build/lang.so', 'python')
+Language.build_library("build/lang.so", ["./tree-sitter-python"])
+LANGUAGE = Language("build/lang.so", "python")
 
 
-QUERY = LANGUAGE.query("""
+QUERY = LANGUAGE.query(
+    """
 (function_definition name: (identifier) @fn-name)
-""")
+"""
+)
 
 
 global_parser = Parser()
@@ -29,7 +26,7 @@ def get_fn_name(code, parser=global_parser):
 
 
 def node_to_string(src: bytes, node):
-    return src[node.start_byte:node.end_byte].decode("utf8")
+    return src[node.start_byte : node.end_byte].decode("utf8")
 
 
 def make_parser():
@@ -38,9 +35,11 @@ def make_parser():
     return _parser
 
 
-RETURN_QUERY = LANGUAGE.query("""
+RETURN_QUERY = LANGUAGE.query(
+    """
 (return_statement) @return
-""")
+"""
+)
 
 
 def does_have_return(src, parser=global_parser):

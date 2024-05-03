@@ -1,16 +1,19 @@
 """data to filter out of the dataset"""
-import json
 import itertools
+import json
 from pathlib import Path
 
 from datasets import load_dataset
-
 
 TEST_IDS = list(range(11, 511))
 
 # HumanEval solutions that are considered simple/generic enough to be kept in the training dataset
 HUMAN_EVAL_STRINGS_OK = [
-    'return x + y', 'return len(string)', 'return n**2', 'return ''.join(strings)']
+    "return x + y",
+    "return len(string)",
+    "return n**2",
+    "return " ".join(strings)",
+]
 
 DS_1000_PATH = Path("/data/ds-1000/ds1000_data/")
 
@@ -35,7 +38,7 @@ def load_ds_1000():
 
 
 def load_mbpp():
-    dataset = load_dataset("mbpp", "sanitized",  split="train")
+    dataset = load_dataset("mbpp", "sanitized", split="train")
     return dataset
 
 
@@ -57,16 +60,16 @@ def extract_docstring(prompt: str) -> str:
             return prompt.split('"""')[3].strip()
         else:
             raise ValueError()
-    elif '\'\'\'' in prompt:
-        assert prompt.count('\'\'\'') == 2
-        return prompt.split('\'\'\'')[1].strip()
+    elif "'''" in prompt:
+        assert prompt.count("'''") == 2
+        return prompt.split("'''")[1].strip()
     else:
         raise ValueError()
 
 
 def human_eval_docstrings():
     ds = load_dataset("openai_humaneval", split="test")
-    docstrings = [extract_docstring(v['prompt']) for v in ds]
+    docstrings = [extract_docstring(v["prompt"]) for v in ds]
     return docstrings
 
 
@@ -75,17 +78,32 @@ def apps_solutions():
     Solutions column contains a list of strings
     """
     ds = load_dataset("codeparrot/apps", split="test")
-    solutions = [sample["solutions"]
-                 for sample in ds if len(sample["solutions"]) > 0]
-    res = itertools.chain.from_iterable(
-        json.loads(sample) for sample in solutions)
+    solutions = [sample["solutions"] for sample in ds if len(sample["solutions"]) > 0]
+    res = itertools.chain.from_iterable(json.loads(sample) for sample in solutions)
     return list(res)
 
 
 def multipl_e_docstrings():
     languages = [
-        "cpp", "cs", "d", "go", "java", "jl", "js", "lua", "php", "pl", "py", "r",
-        "rb", "rkt", "rs", "scala", "sh", "swift", "ts"
+        "cpp",
+        "cs",
+        "d",
+        "go",
+        "java",
+        "jl",
+        "js",
+        "lua",
+        "php",
+        "pl",
+        "py",
+        "r",
+        "rb",
+        "rkt",
+        "rs",
+        "scala",
+        "sh",
+        "swift",
+        "ts",
     ]
     # languages = ["py", "java", "js"]
     src_datas = ["humaneval", "mbpp"]
@@ -97,7 +115,8 @@ def multipl_e_docstrings():
                 if src_data == "mbpp" and variation == "-remove":
                     continue
                 ds = load_dataset(
-                    "nuprl/MultiPL-E", f"{src_data}-{lang}{variation}", split="test")
+                    "nuprl/MultiPL-E", f"{src_data}-{lang}{variation}", split="test"
+                )
                 data += [sample["prompt"].strip() for sample in ds]
     return data
 
@@ -115,7 +134,10 @@ def filter_out():
         "mbpp_solutions": mbpp_solutions(),
         "human_eval_docstrings": human_eval_docstrings(),
         "human_eval_solutions": [
-            s for s in load_dataset_column("openai_humaneval", "canonical_solution", "test")
+            s
+            for s in load_dataset_column(
+                "openai_humaneval", "canonical_solution", "test"
+            )
             if s not in HUMAN_EVAL_STRINGS_OK
         ],
     }
