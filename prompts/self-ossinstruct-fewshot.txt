@@ -682,3 +682,141 @@ assert create_folds(range(8), 2) == [range(0, 4), range(4, 8)]
 assert create_folds(range(25), -5) == []
 assert create_folds(range(6), 2) == [range(0, 3), range(3, 6)]
 ```
+
+### Example 10
+[Code]
+def duration(string):
+    match = re.match(PATTERN, string)
+    if not match:
+        raise ValueError('Invalid duration: {}'.format(string))
+
+    suffix = match.group(2)
+    if suffix not in SUFFIX_MAP:
+        raise ValueError('Invalid duration suffix: {}'.format(string))
+
+    return int(match.group(1)) * SUFFIX_MAP[suffix]
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: regular expression, unit conversion, error handling
+
+[Instruction]
+Create a Python function that converts a string representation of a time duration into its total number of seconds. 
+The input string should follow a format that includes a numeric part followed by a time unit suffix without any spaces between.
+The time unit can be seconds in the form of 's' or 'sec', minutes in the form of 'm' or 'min', hours in the form of 'h' or 'hour', and days in the form of 'd' or 'day' (units are in small case).
+If the input format is invalid, the function should raise a ValueError.
+
+```python
+assert parse_duration('15s') == 15
+assert parse_duration('2min') == 120
+assert parse_duration('1h') == 3600
+assert parse_duration('1d') == 86400
+try:
+    parse_duration('30')
+except ValueError as e:
+    pass
+```
+
+[Response]
+[Reasoning]
+The desired function aims to transform a string representation into its total number of seconds. The implementation can be split into two parts:
+
+Input validation:
+1. The input string includes two parts: a number as the prefix and the unit as the suffix.
+2. We can use regular expression to assert the prefix must be a number (d+) and suffix must be one of s/sec/m/min/h/hour/d/day.
+3. If the input string cannot the regular expression, we raise a ValueError. 
+
+Result computation:
+1. Based on the matches of regular expression, we capture the number and unit part.
+2. We convert the unit to seconds: 's'/'sec' -> 1 second, 'm'/'min' -> 60 seconds, 'h'/'hour' -> 3600 seconds, 'd'/'day' -> 86400 seconds.
+3. We multiply the seconds of the unit and the prefix number and return it as an integer. 
+
+[Implementation]
+Here's how you can implement this:
+
+```python
+import re
+
+def parse_duration(duration_str):
+    # Define a regex pattern to match the input string
+    pattern = re.compile(r"(\d+)(s|sec|m|min|h|hour|d|day)$")
+    match = pattern.match(duration_str)
+    
+    # Raise an error if the input string does not match the pattern
+    if not match:
+        raise ValueError(f"Invalid duration: {duration_str}")
+    
+    # Extract the numeric part and the suffix from the matched groups
+    value, suffix = match.groups()
+    value = int(value)
+
+    # Define a dictionary mapping suffixes to their respective number of seconds
+    suffix_map = {
+        's': 1, 'sec': 1,
+        'm': 60, 'min': 60,
+        'h': 3600, 'hour': 3600,
+        'd': 86400, 'day': 86400
+    }
+
+    # Calculate and return the total number of seconds
+    return value * suffix_map[suffix]
+```
+
+[Explanation]
+The implementation begins by defining a regular expression pattern that expects a numeric value followed by a valid time unit suffix. 
+The function then tries to match this pattern against the input string. 
+If the match is successful, it extracts the numeric value and the suffix. 
+A dictionary (suffix_map) maps each suffix to the number of seconds it represents. 
+Using this dictionary, the function calculates the total number of seconds corresponding to the input and returns it.
+
+[Tests]
+You can test your code with the provided assertions to verify that the function works correctly:
+
+```python
+# Test additional valid inputs with different suffix representations
+assert parse_duration('10sec') == 10, "Check for 'sec' suffix"
+assert parse_duration('3min') == 180, "Check for 'min' suffix"
+assert parse_duration('5h') == 18000, "Check for 'h' suffix"
+assert parse_duration('2hour') == 7200, "Check for 'hour' suffix"
+assert parse_duration('1day') == 86400, "Check for 'day' suffix"
+
+# Test edge cases
+assert parse_duration('0s') == 0, "Zero duration"
+assert parse_duration('0min') == 0, "Zero minutes"
+
+# Test inputs with leading zeros
+assert parse_duration('001s') == 1, "Leading zeros"
+assert parse_duration('010min') == 600, "Leading zeros with minutes"
+
+# Test case sensitivity and invalid suffix handling
+try:
+    parse_duration('10S')
+except ValueError:
+    pass
+
+try:
+    parse_duration('2hours')
+except ValueError:
+    pass
+
+try:
+    parse_duration('5 mins')
+except ValueError:
+    pass
+
+# Test incorrect formats
+try:
+    parse_duration('h1')
+except ValueError:
+    pass
+
+try:
+    parse_duration('100')
+except ValueError:
+    pass
+
+# Test extremely large numbers
+assert parse_duration('1000000s') == 1000000, "Very large number of seconds"
+```
+
