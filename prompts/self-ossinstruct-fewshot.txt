@@ -820,3 +820,494 @@ except ValueError:
 assert parse_duration('1000000s') == 1000000, "Very large number of seconds"
 ```
 
+### Example 17
+[Code]
+def get_param_groups(network):
+    """ get param groups """
+    decay_params = []
+    no_decay_params = []
+    for x in network.trainable_params():
+        parameter_name = x.name
+        if parameter_name.endswith(".weight"):
+            # Dense or Conv's weight using weight decay
+            decay_params.append(x)
+        else:
+            # all bias not using weight decay
+            # bn weight bias not using weight decay, be carefully for now x not include LN
+            no_decay_params.append(x)
+
+    return [{'params': no_decay_params, 'weight_decay': 0.0}, {'params': decay_params}]
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: neural network training, parameter groups, weight decay, bias regularization
+difficulty: medium
+
+[Instruction]
+Write a Python function for a typical neural network training process that returns a list of parameter groups suitable for optimizer's option such as `torch.optim.SGD`. Iterate over network parameters to properly remove `weight_decay` from all bias parameters. If the name of neural network parameters has the suffix `.weight`, it means that these parameters are non-bias parameters; otherwise, these parameters are bias parameters.
+
+[Response]
+[Reasoning]
+To transform a typical neural network into a list of parameter groups suitable for optimizer's option, we'll perform the following steps:
+
+1. Initialize two lists to store trainable parameters that require weight decay and those that don't.
+2. Loop over the network's parameters, extracting their names in each iteration.
+3. Check if the parameter name ends with the suffix `.weight` using the `endswith` method. If it does, it is considered a non-bias parameter and appended to the `decay_params` list.
+4. Otherwise, the parameter name doesn't end with `.weight`, we'll assume it's a bias parameter and append it to the `no_decay_params` list.
+5. Once the loop is complete, return the lists of parameter groups using the appropriate options for `weight_decay` and `params`.
+
+[Implementation]
+Here's how you can implement this Python function:
+
+```python
+def get_param_groups(network):
+    # Initialize lists for trainable parameters that require weight decay and those that don't
+    decay_params = []
+    no_decay_params = []
+
+    # Loop over the network's parameters
+    for x in network.named_parameters():
+        # Extract the parameter name for later use
+        parameter_name = x[0]
+        if parameter_name.endswith(".weight"):
+            # Non-bias parameter, using `weight_decay` option
+            decay_params.append(x)
+        else:
+            # Bias parameter, exclude `weight_decay`
+            no_decay_params.append(x)
+
+    # Return the parameter groups using the proper options for `weight_decay` and `params`
+    return [{'params': no_decay_params, 'weight_decay': 0.0}, {'params': decay_params}]
+```
+
+[Explanation]
+This function iterates over the network's trainable parameters, categorizing them into parameter groups that would be appropriate for passing to an optimizer's option like `torch.optim.SGD`. The function produces two parameter groups: one with option `weight_decay` set to `0.0` for all bias parameters, and one without the option set, ultimately giving us a proper split for non-zero weight decay and zero weight decay.
+
+[Tests]
+You can test this function with the following code:
+
+```python
+import torch
+
+# Create a dummy model
+model = torch.nn.Conv2d(3, 10, kernel_size=3, padding=1)
+
+# Obtain the parameter groups
+param_groups = get_param_groups(model)
+decay_params = param_groups[1]['params']
+no_decay_params = param_groups[0]['params']
+
+# Just to be safe, assert that these parameters do have these names
+for param in decay_params:
+    assert param[0].endswith(".weight")
+
+for param in no_decay_params:
+    assert not param[0].endswith(".weight")
+```
+
+These tests verify that the function indeed separates the trainable parameters correctly into two groups per the described criteria.
+
+### Example 18
+[Code]
+def alternatingCharacters(s):
+    i = 0
+    j = 1
+    count = 0
+    while j<len(s):
+        if s[j] == s[i]:
+            while j<len(s) and s[j] == s[i]:
+                j+=1
+            count += j-i-1
+        i = j
+        j += 1
+    return count
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: 2-pointer technique, string manipulation, counting
+difficulty: medium
+
+[Instruction]
+Write a Python function that takes a string `s` and counts the minimum number of deletions required to change `s` into a string such that there are no matching adjacent characters. For example, if `s = "AABAAB"`, the function should return `2` because we can delete an `A` at positions 0 and 3 to make `s = "ABAB"` in 2 deletions. Use the two-pointer technique to efficiently traverse the string and count the number of deletions required.
+
+[Response]
+[Reasoning]
+To count the minimum number of deletions required to change a string `s` into a string with no matching adjacent characters, we need several key steps as follows:
+
+1. Initialize `i` and `j` to 0 and 1, respectively, to point to the first two characters in the string.
+2. While `j` is within the bounds of the string:
+    - If `s[j]` is equal to `s[i]`, we have a matching adjacent character. We'll need to delete all the characters between `i` and `j` except for one. To do this, we'll increment `j` until we find a character that is not equal to `s[i]`. The number of deletions required will be `j - i - 1` because `j` is pointing to the first character that is not equal to `s[i]`, and we need to delete all the characters between `i` and `j` except for one.
+    - Update `count` by adding the number of deletions required.
+    - Move `i` to `j` and increment `j` by 1 to continue traversing the string.
+3. Return `count` as the minimum number of deletions required.
+
+[Implementation]
+Here's how you can implement this function:
+
+```python
+def alternating_characters(s: str) -> int:
+    i = 0
+    j = 1
+    count = 0
+    while j < len(s):
+        if s[j] == s[i]:
+            # Increment j until we find a character that is not equal to s[i]
+            while j < len(s) and s[j] == s[i]:
+                j += 1
+            # Add the number of deletions required to count
+            count += j - i - 1
+        # Move i to j and increment j by 1
+        i = j
+        j += 1
+    return count
+```
+
+[Explanation]
+This function uses two pointers, `i` and `j`, to traverse the string and count the number of deletions required. Whenever we find a matching adjacent character, we increment `j` until we find a character that is not equal to `s[i]`. The number of deletions required will be `j - i - 1` because `j` is pointing to the first character that is not equal to `s[i]`, and we need to delete all the characters between `i` and `j` except for one. We then update `count` by adding the number of deletions required and move `i` to `j` to continue traversing the string.
+
+[Tests]
+You can test this function with a few test cases to ensure correctness:
+
+```python
+assert alternating_characters("AAAA") == 3
+assert alternating_characters("BBBBB") == 4
+assert alternating_characters("ABABABAB") == 0
+assert alternating_characters("BABABA") == 0
+assert alternating_characters("AAABBB") == 4
+```
+
+### Example 19
+[Code]
+def oxford_comma_text_to_list(phrase):
+    """Examples:
+    - 'Eeeny, Meeny, Miney, and Moe' --> ['Eeeny', 'Meeny', 'Miney', 'Moe']
+    - 'Black and White' --> ['Black', 'White']
+    - 'San Francisco and Saint Francis' -->
+        ['San Francisco', 'Saint Francisco']
+    """
+    items = []
+    for subphrase in phrase.split(', '):
+        items.extend(
+            [item.strip() for item in subphrase.split(' and ')])
+    return items
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: string manipulation, list concatenation, whitespace trimming
+difficulty: easy
+
+[Instruction]
+Write a Python function that takes a list of strings and returns a string with the items separated by commas and the last item preceded by "and". Ensure that the function can handle empty lists and lists with only one item.
+
+[Response]
+[Reasoning]
+To convert a list of strings into a string with the items separated by commas and the last item preceded by "and", we can follow these steps:
+
+1. Split the phrase at commas: Use the `split` method of strings to split the phrase at commas, resulting in a list of subphrases.
+2. Split each subphrase at "and": For each subphrase, split it at the word "and" using the `split` method again. This will result in a list of items within the subphrase.
+3. Trim whitespace: For each item, use the `strip` method to remove any leading or trailing whitespace.
+4. Assemble the items: Use the `extend` method of lists to add the items from each subphrase to the final list.
+
+[Implementation]
+Here's how you can implement this function:
+
+```python
+def oxford_comma_text_to_list(phrase: str) -> list:
+    items = []
+    for subphrase in phrase.split(','):
+        items.extend(
+            [item.strip() for item in subphrase.split(' and ') if item.strip() != ""])
+    return items
+```
+
+[Explanation]
+This function uses the `split` method of strings to split the phrase at commas, resulting in a list of subphrases. For each subphrase, it splits it at the word "and" using the `split` method again, resulting in a list of items within the subphrase. The `strip` method is used to remove any leading or trailing whitespace from each item. Finally, the `extend` method of lists is used to add the items from each subphrase to the final list.
+
+[Tests]
+You can test this function with a few examples:
+
+```python
+assert oxford_comma_text_to_list('Eeeny, Meeny, Miney, and Moe') == ['Eeeny', 'Meeny', 'Miney', 'Moe']
+assert oxford_comma_text_to_list('Black and White') == ['Black', 'White']
+assert oxford_comma_text_to_list('San Francisco and Saint Francis') == ['San Francisco', 'Saint Francis']
+```
+
+### Example 20
+[Code]
+# O(n) time | O(1) space
+class LinkedList:
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+
+def findLoop(head):
+        if not head and not head.next:
+                return None
+    slowPtr, fastPtr = head.next, head.next.next
+        while slowPtr != fastPtr:
+                slowPtr = slowPtr.next
+                fastPtr = fastPtr.next.next
+        fastPtr = head
+        while fastPtr != slowPtr:
+                slowPtr = slowPtr.next
+                fastPtr = fastPtr.next
+        return fastPtr
+
+[Property]
+category: code generation (class implementation)
+language: Python
+concepts: 2-pointer technique, linked list cycle detection, space complexity optimization
+difficulty: hard
+
+[Instruction]
+Implement a Python class with a method `find_loop` that detects and returns the node at the beginning of a loop in a linked list, if one exists. The method should have a time complexity of O(n) and a space complexity of O(1). Assume that the linked list has at least one node and that the loop is guaranteed to exist.
+
+[Response]
+[Reasoning]
+To detect a loop in a linked list, we can use the two-pointer technique, where one pointer moves at a slower pace than the other. If the linked list has a loop, the two pointers will eventually meet at some point. To determine the node at the beginning of the loop, we can use the following approach:
+
+1. Initialize two pointers, `slowPtr` and `fastPtr`, to the second node in the linked list.
+2. Move `slowPtr` one node at a time and `fastPtr` two nodes at a time until they meet. This indicates that the linked list has a loop.
+3. Reset `fastPtr` to the head of the linked list and move both pointers one node at a time until they meet again. This time, they will meet at the beginning of the loop.
+
+[Implementation]
+Here's how you can implement this class:
+
+```python
+class LinkedList:
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+
+    def find_loop(self):
+        # Initialize two pointers to the second node
+        slow_ptr = self.next
+        fast_ptr = self.next.next
+
+        # Move the pointers until they meet
+        while slow_ptr != fast_ptr:
+            slow_ptr = slow_ptr.next
+            fast_ptr = fast_ptr.next.next
+
+        # Reset fast_ptr to the head and move both pointers one node at a time
+        fast_ptr = self
+        while fast_ptr != slow_ptr:
+            slow_ptr = slow_ptr.next
+            fast_ptr = fast_ptr.next
+
+        # Return the node at which the pointers meet
+        return fast_ptr
+```
+
+[Explanation]
+This class `LinkedList` implements the two-pointer technique to detect and return the node at the beginning of a loop in a linked list. The `find_loop` method moves the pointers until they meet, then resets the fast pointer to the head and moves both pointers one node at a time until they meet again. This time, they will meet at the beginning of the loop.
+
+[Tests]
+To test this class, you can use the following code:
+
+```python
+# Create a linked list with a loop
+head = LinkedList(1)
+head.next = LinkedList(2)
+head.next.next = LinkedList(3)
+head.next.next.next = LinkedList(4)
+head.next.next.next.next = LinkedList(5)
+head.next.next.next.next.next = head.next.next
+
+# Test that the loop is correctly detected
+assert head.find_loop() == head.next.next
+```
+
+### Example 21
+[Code]
+import os
+import sysconfig
+import sys
+
+def distutils_dir_name(dname):
+    """Returns the name of a distutils build directory"""
+    f = "{dirname}.{platform}-{version[0]}.{version[1]}"
+    return f.format(dirname=dname,
+                    platform=sysconfig.get_platform(),
+                    version=sys.version_info)
+
+
+print(os.path.join('build', distutils_dir_name('lib')), end = '')
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: cross-platform compatibility, build directory naming, string formatting
+difficulty: medium
+
+[Instruction]
+Write a Python function that returns the name of a distutils build directory based on the current platform and Python version. The function should take a string `dname` as input and return a string in the format `dname.platform-version[0].version[1]`, where `platform` is the current platform, and `version[0]` and `version[1]` are the major and minor versions of the current Python interpreter, respectively. The function should also handle cross-platform compatibility.
+
+[Response]
+[Reasoning]
+To generate the name of a distutils build directory, we can follow these steps: 
+
+1. Get the current platform: We can use the `sysconfig` module's `get_platform` function to get the current platform in a format that is compatible with distutils build directories.
+2. Get the current Python version: We can use the `sys` module's `version_info` attribute to get the current Python version as a tuple of integers.
+3. Format the string: We can use string formatting to insert the platform and version information into the desired format.
+
+[Implementation]
+Here's how you can implement this function:
+
+```python
+import sys
+import sysconfig
+
+def get_distutils_build_dir(dname: str) -> str:
+    # Get the current platform
+    platform = sysconfig.get_platform()
+    # Get the current Python version
+    version = sys.version_info
+    # Format the string
+    return f"{dname}.{platform}-{version[0]}.{version[1]}"
+```
+
+[Explanation]
+This function uses the `sysconfig` and `sys` modules to get the current platform and Python version, respectively. It then uses string formatting to insert this information into the desired format.
+
+[Tests]
+You can test this function with a few different inputs to ensure it works correctly:
+
+```python
+assert get_distutils_build_dir('lib') == 'lib.' + sysconfig.get_platform() + '-' + str(sys.version_info[0]) + '.' + str(sys.version_info[1])
+assert get_distutils_build_dir('bin') == 'bin.' + sysconfig.get_platform() + '-' + str(sys.version_info[0]) + '.' + str(sys.version_info[1])
+assert get_distutils_build_dir('include') == 'include.' + sysconfig.get_platform() + '-' + str(sys.version_info[0]) + '.' + str(sys.version_info[1])
+```
+
+### Example 22
+[Code]
+def get_hashes(buf):
+    hexdigests = namedtuple('Digests', 'md5 sha1 sha256 sha512 ctph')
+    if isinstance(buf, str):
+        buf = open(buf, 'rb').read()
+    md5 = hashlib.md5(buf).hexdigest()
+    sha1 = hashlib.sha1(buf).hexdigest()
+    sha256 = hashlib.sha256(buf).hexdigest()
+    sha512 = hashlib.sha512(buf).hexdigest()
+    ctph = ssdeep.hash(buf)
+    return hexdigests._make((md5, sha1, sha256, sha512, ctph))
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: hash computation, file input handling, namedtuple, string formatting
+difficulty: medium
+
+[Instruction]
+Write a Python function that takes a file path or a binary string as input and returns a `namedtuple` containing the MD5, SHA1, SHA256, and SHA512 hashes of the input. The function should handle both file paths and binary strings as input and return the hashes as hexadecimal strings.
+
+[Response]
+[Reasoning]
+To compute the hashes of a file or a binary string, we'll follow these steps:
+
+1. If the input is a string, convert it to a binary string by opening the file in binary mode and reading its contents.
+2. Compute the MD5, SHA1, SHA256, and SHA512 hashes using the `hashlib` module.
+3. Return the hashes as a `namedtuple` for easy access and string formatting.
+
+[Implementation]
+Here's how you can implement this function:
+
+```python
+import hashlib
+from collections import namedtuple
+
+def get_hashes(buf):
+    # Create a namedtuple to store the hashes
+    Hashes = namedtuple('Digests', 'md5 sha1 sha256 sha512')
+
+    # If the input is a string, convert it to a binary string
+    if isinstance(buf, str):
+        buf = open(buf, 'rb').read()
+
+    # Compute the hashes
+    md5 = hashlib.md5(buf).hexdigest()
+    sha1 = hashlib.sha1(buf).hexdigest()
+    sha256 = hashlib.sha256(buf).hexdigest()
+    sha512 = hashlib.sha512(buf).hexdigest()
+
+    # Return the hashes as a namedtuple
+    return Hashes(md5, sha1, sha256, sha512)
+```
+
+[Explanation]
+This function uses the `hashlib` module to compute the MD5, SHA1, SHA256, and SHA512 hashes of the input. It also uses the `ssdeep` module to compute the CTPH hash. The `namedtuple` is used to store the hashes for easy access and string formatting.
+
+[Tests]
+You can test this function with a few test cases:
+
+```python
+import hashlib
+
+string = 'test.txt'
+binary = string.encode()
+# Test with a file path
+assert get_hashes(binary).md5 == hashlib.md5(binary).hexdigest()
+assert get_hashes(binary).sha1 == hashlib.sha1(binary).hexdigest()
+assert get_hashes(binary).sha256 == hashlib.sha256(binary).hexdigest()
+assert get_hashes(binary).sha512 == hashlib.sha512(binary).hexdigest()
+```
+
+### Example 23
+[Code]
+class Solution:
+    def isIdealPermutation(self, A):
+        """
+        :type A: List[int]
+        :rtype: bool
+        """        
+        size, m = len(A), 0
+        for i in range(size - 2):
+            m = max(m, A[i])
+            if m > A[i + 2]:
+                return False
+        return True
+
+[Property]
+category: code generation (class implementation)
+language: Python
+concepts: local maxima, global maxima, array traversal, greedy algorithm
+difficulty: hard
+
+[Instruction]
+Write a Python class with a method `isIdealPermutation(A)` that takes in an array `A` of integers and returns `True` if the number of local maxima in `A` is equal to the number of global maxima in `A`. A local maximum is an element in the array that is greater than both its adjacent elements. A global maximum is an element in the array that is greater than all elements to its right. Use a greedy algorithm to traverse the array and keep track of the local and global maxima.
+
+[Response]
+[Reasoning]
+To implement the required class and method, we can follow these steps:
+
+1. Initialization of the Maximum Variable: Before the loop starts, `mx` is initialized to 0. This variable is used to keep track of the maximum value encountered in the array up to two positions before the current index.
+2. Loop through the Array: The `for` loop iterates from the third element (index 2) to the end of the array `A`. This allows the comparison of each element with the maximum value of the elements up to two positions before it.
+3. Update Maximum and Check Condition: Inside the loop, `mx` is updated to be the maximum of the current `mx` and the element at position `i-2` of the array. This assignment uses the walrus operator `:=`, which assigns a value to `mx` and simultaneously checks if `mx` is greater than `A[i]`.
+4. Return Value Based on Condition: If at any point during the iteration `mx` (the maximum value found up to two positions before the current index) is greater than the current element `A[i]`, the method immediately returns False, indicating that there is a non-local inversion in the array. If the loop completes without finding any such case, the method returns True, indicating all inversions in the array are local.
+
+[Implementation]
+Here's how you can implement this class and method:
+
+```python
+class Solution:
+    def isIdealPermutation(self, A) -> bool:
+        mx = 0
+        for i in range(2, len(A)):
+            if (mx := max(mx, A[i - 2])) > A[i]:
+                return False
+        return True
+```
+
+[Explanation]
+This class `Solution` implements the method `isIdealPermutation` that traverses the array `A` and keeps track of the number of local and global maxima. It then compares these two values and returns `True` if they are equal, indicating that the number of local maxima is equal to the number of global maxima.
+
+[Tests]
+To verify the correctness of this class and method, we can run the following tests:
+
+```python
+assert Solution().isIdealPermutation([1, 0, 2]) == True
+assert Solution().isIdealPermutation([1, 2, 0]) == False
+```
