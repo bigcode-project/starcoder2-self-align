@@ -536,7 +536,7 @@ This implementation handles both positive and negative file sizes and returns th
 You can write the following test cases to ensure it works correctly:
 
 ```python
-test_data = [
+test = [
     (1024 ** 2, "1.0MB"),
     (1024 ** 2 - 1, "1024.0KB"),
     (1024 ** 3 * 512, "512.0GB"),
@@ -1587,4 +1587,258 @@ To verify the correctness of this class and method, we can run the following tes
 ```python
 assert Solution().isIdealPermutation([1, 0, 2]) == True
 assert Solution().isIdealPermutation([1, 2, 0]) == False
+```
+
+### Example 24
+[Code]
+from collections import Counter
+
+class Solution:
+    def sumOfUnique(self, nums: List[int]) -> int:
+        return sum(k for k, v in Counter(nums).items() if v == 1)
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: dictionary-based counting, filtering unique elements with list comprehension, summation of elements based on condition
+
+[Instruction]
+Write a Python function that takes a list from user input and prints the sum of counts for elements that occur more than once. Use a dictionary to count frequencies efficiently. Utilize a list comprehension to extract repeated elements based on the frequency counts, and sum their corresponding counts from the dictionary.
+
+[Response]
+[Reasoning]
+To implement this function, we first need to parse the user input as a list of integers and then count the frequency of each element using a dictionary. We can then calculate the sum of the counts for elements that occur more than once.
+
+[Implementation]
+Here's a sample Python function that accomplishes this:
+
+```python
+def sum_repeated_counts():
+    nums = list(map(int, input().split()))
+    freq_dict = {}
+    for num in nums:
+        freq_dict[num] = freq_dict.get(num, 0) + 1
+    sum_of_repeats = sum(v for k, v in freq_dict.items() if v > 1)
+    print(sum_of_repeats)
+```
+
+[Explanation]
+This function reads a list of integers from the user input, counts the frequency of each element using a dictionary, and then calculates the sum of counts for elements that occur only once.
+
+[Tests]
+We can test this program with I/O redirection to simulate user input and output. Here is an example:
+
+```python
+test_cases = [
+    ("1 2 2 3 3 3\n", "5\n"),
+    ("1 1 1 1 1\n", "5\n"),
+    ("1 2 3 4 5\n", "0\n"),
+    ("\n", "0\n")
+]
+
+for input_data, expected_output in test_cases:
+    stdin, stdout = sys.stdin, sys.stdout
+    sys.stdin = StringIO(input_data)
+    sys.stdout = StringIO()
+    sum_repeated_counts()
+    output = sys.stdout.getvalue()
+    assert output == expected_output
+```
+
+### Example 25
+
+[Code]
+fp=open('cmd.sh','r')
+lines=fp.readlines()
+for i,line in enumerate(lines):
+    cmd=line.replace('\n','')
+    print i,cmd
+    p=os.popen(cmd)
+    x=p.read()
+    p.close()
+fp.close
+
+[Property]
+category: code generation (program implementation)
+language: Python
+concepts: iterating over file lines, command execution from file input, new line character removal
+
+[Instruction]
+Develop a Python program that reads a text file containing one shell command per line and executes these commands sequentially. Each command should be sanitized by removing unnecessary newline characters before execution. Provide clear error handling and logging to manage exceptions that might occur during the execution of the commands.
+
+[Response]
+[Reasoning]
+To create a Python program that reads and executes shell commands from a text file, we can use Python’s built-in module `subprocess` for running the commands and `logging` for handling logs and errors. The program will involve reading and sanitizing the commands from a file, executing them sequentially, and logging the results or errors.
+
+[Implementation]
+Below is the Python script that demonstrates the described functionality:
+
+```python
+import subprocess
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
+
+def read_commands(file_path):
+    """Reads a text file and returns a list of commands."""
+    try:
+        with open(file_path, 'r') as file:
+            commands = file.readlines()
+        commands = [cmd.strip() for cmd in commands]  # Remove newline characters and spaces
+        return commands
+    except FileNotFoundError:
+        logging.error(f"The file {file_path} was not found.")
+        raise
+    except Exception as e:
+        logging.error(f"An error occurred while reading the file: {str(e)}")
+        raise
+
+def execute_command(command):
+    """Executes a single shell command."""
+    try:
+        logging.info(f"Executing command: {command}")
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logging.info(f"Command output: {result.stdout.decode().strip()}")
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error executing command '{command}': {e.stderr.decode()}")
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {str(e)}")
+
+def main(file_path):
+    """Main function to read commands from a file and execute them."""
+    commands = read_commands(file_path)
+    for command in commands:
+        execute_command(command)
+```
+
+[Explanation]
+In this script, we configure logging to track the execution status and errors. `read_commands` reads the commands from a specified file and strips unnecessary whitespace and newlines using `strip()`. `execute_command` runs a given shell command using `subprocess.run` and handles errors, logging the output or error messages. The `main` function reads and executes the commands sequentially, logging any exceptions that occur during the process.
+
+[Tests]
+To test this program, we can use Python's `unittest` framework along with `mock_open` to simulate file operations, `patch` to mock `subprocess.run` for testing command execution, and `assertLogs` to verify the logging output. Here's an example of how you can write tests for this program:
+
+```python
+import unittest
+from unittest.mock import mock_open, patch, MagicMock
+
+class TestCommandExecutor(unittest.TestCase):
+    def test_read_commands_success(self):
+        m = mock_open(read_data="ls\npwd\n")
+        with patch('builtins.open', m):
+            result = read_commands("dummy_path")
+            self.assertEqual(result, ['ls', 'pwd'])
+
+    def test_read_commands_file_not_found(self):
+        with patch('builtins.open', mock_open()) as mocked_file:
+            mocked_file.side_effect = FileNotFoundError
+            with self.assertRaises(FileNotFoundError):
+                read_commands("nonexistent_path")
+
+    @patch('subprocess.run')
+    def test_execute_command_success(self, mock_run):
+        mock_run.return_value = MagicMock(stdout=b"Execution successful", stderr=b"")
+        execute_command("ls")
+        mock_run.assert_called_once_with("ls", shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    @patch('subprocess.run')
+    def test_execute_command_failure(self, mock_run):
+        error_message = b"Command failed"
+        mock_run.side_effect = subprocess.CalledProcessError(1, 'ls', stderr=error_message)
+        with self.assertLogs(level='ERROR') as log:
+            execute_command("ls")
+            self.assertIn("Error executing command 'ls'", log.output[0])
+            self.assertIn("Command failed", log.output[0])
+
+if __name__ == "__main__":
+    unittest.main()
+```
+
+### Example 26
+[Code]
+def busca_linear_recursiva(array,elemento):
+    i = -1
+    return busca_recursiva(array,elemento, i)
+
+def busca_recursiva(array,elemento, i):
+    i += 1
+    if(i == len(array)):
+       return -1
+    if(array[i] == elemento):
+        return i
+    return busca_recursiva(array,elemento,i)
+
+[Property]
+category: code generation (program implementation)
+language: Python
+concepts: linear search with recursion, default parameter initialization, multiple base cases in recursion
+
+[Instruction]
+Design a Python program that not only searches for a target value in a list using recursion but also constructs a trace of the indices it checks. This program should return both the index of the target, if found, or `-1` if not, alongside a list of the indices it examined during the search. The function should handle cases where the target is not present in the list.
+
+[Response]
+[Reasoning]
+We can implement a recursive linear search function that returns the index of the target element if found or `-1` if not. To keep track of the indices examined during the search, we can pass a list as an additional parameter to store these indices. The function will incrementally add the indices to this list as it traverses the array.
+
+[Implementation]
+Here is the Python program that implements this functionality:
+
+```python
+def search_recursive(arr, target, index, indices_checked):
+    """Recursive function to search for the target value in the list."""
+    # Base case: if index exceeds the length of the array, target not found
+    if index >= len(arr):
+        return -1
+    indices_checked.append(index)
+    # Check if the current element is the target
+    if arr[index] == target:
+        return index
+    return search_recursive(arr, target, index + 1, indices_checked)
+
+def recursive_search(arr, target):
+    """Wrapper function to initiate recursive search."""
+    indices_checked = []
+    result = search_recursive(arr, target, 0, indices_checked)
+    return result, indices_checked
+
+# Example usage
+if __name__ == "__main__":
+    array = [2, 3, 4, 8, 5, 9, 1, 6, 5, 7, 5]
+    target = 6
+    result, indices = recursive_search(array, target)
+    print(f"Target {target} found at index {result} with indices checked: {indices}")
+```
+
+[Explanation]
+In this implementation, the `search_recursive` function recursively searches for the target element in the list and appends the indices checked to the `indices_checked` list. The `recursive_search` function acts as a wrapper to initiate the recursive search and return the result along with the list of indices checked.
+
+[Tests]
+To test the implementation, we need to ensure that both the index of the target element and the list of indices checked are correct. Here are the test cases:
+
+```python
+# Test case 1: Target found in the list
+arr1 = [2, 3, 4, 8, 5, 9, 1, 6, 5, 7, 5]
+target1 = 6
+expected_result1 = arr1.index(target1)
+expected_indices1 = list(range(expected_result1 + 1))
+result1, indices_checked1 = recursive_search(arr1, target1)
+assert result1 == expected_result1
+assert indices_checked1 == expected_indices1
+
+# Test case 2: Target not found in the list
+arr2 = [1, 2, 3, 4, 5]
+target2 = 6
+expected_result2 = -1
+expected_indices2 = list(range(len(arr2)))
+result2, indices_checked2 = recursive_search(arr2, target2)
+assert result2 == expected_result2
+assert indices_checked2 == expected_indices2
+
+# Test case 3: Target found at the end of the list
+arr3 = [5, 4, 3, 2, 1]
+target3 = 1
+expected_result3 = len(arr3) - 1
+expected_indices3 = list(range(expected_result3 + 1))
+result3, indices_checked3 = recursive_search(arr3, target3)
+assert result3 == expected_result3
+assert indices_checked3 == expected_indices3
 ```
