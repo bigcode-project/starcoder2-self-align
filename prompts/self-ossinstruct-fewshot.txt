@@ -729,8 +729,8 @@ Input validation:
 
 Result computation:
 1. Based on the matches of regular expression, we capture the number and unit part.
-1. We convert the unit to seconds: 's'/'sec' -> 1 second, 'm'/'min' -> 60 seconds, 'h'/'hour' -> 3600 seconds, 'd'/'day' -> 86400 seconds.
-2. We multiply the seconds of the unit and the prefix number and return it as an integer. 
+2. We convert the unit to seconds: 's'/'sec' -> 1 second, 'm'/'min' -> 60 seconds, 'h'/'hour' -> 3600 seconds, 'd'/'day' -> 86400 seconds.
+3. We multiply the seconds of the unit and the prefix number and return it as an integer. 
 
 [Implementation]
 Here's how you can implement this:
