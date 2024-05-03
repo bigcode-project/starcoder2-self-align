@@ -425,7 +425,7 @@ def decompress(self):
 [Property]
 category: code generation (class and function implementation)
 language: Python
-concepts: decoding Huffman compressed data, binary tree traversal, byte array processing
+concepts: 
 
 [Instruction]
 Write a Python function `huffman_decompress` that takes two arguments: `compressed_data`, a byte array of 0/1 sequence representing Huffman compressed data, and `huffman_tree`, a Huffman tree that stores the actual data (each leaf is associated with a character). The function should return the original uncompressed data as `bytes`. Define the `HuffmanNode` class yourself as a general tree structure with a `children` list.
@@ -819,6 +819,100 @@ except ValueError:
 # Test extremely large numbers
 assert parse_duration('1000000s') == 1000000, "Very large number of seconds"
 ```
+
+### Example 11
+[Code]
+def reverse_bisect(scores, value):
+    low, high = 0, len(scores)
+    while low < high:
+        mid = (low + high) // 2
+        if value > scores[mid]:
+            high = mid
+        else:
+            low = mid + 1
+    return low
+
+
+if __name__ == "__main__":
+    arr = [5, 4, 2, 2, 1, 0]
+    op = reverse_bisect(arr, 3)
+    print(op)
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: binary search, array insertion
+
+[Instruction]
+Implement a Python function that efficiently identifies the insertion position (in the form of a zero-based index) of a new element (typed int or float) in a list sorted in descending order that can preserve the descending order. If there are multiple possible positions, always return the smallest index.
+
+```python
+# Test cases to validate the reverse_bisect function
+assert reverse_bisect([5, 4, 2, 2, 1, 0], 3) == 2, "Insertion index for 3 should be 2"
+assert reverse_bisect([10, 9, 8, 7, 6], 5) == 5, "Insertion index for 5 should be 5"
+assert reverse_bisect([100, 50, 50, 20], 50) == 1, "Insertion index for 50 should be 1"
+assert reverse_bisect([100, 50, 50, 20], 75) == 1, "Insertion index for 75 should be 1"
+assert reverse_bisect([], 10) == 0, "Insertion index in an empty list should be 0"
+assert reverse_bisect([3, 3, 3, 3], 3) == 0, "Insertion index for 3 in all 3s should be 0"
+```
+
+[Response]
+[Reasoning]
+The goal of the desired function is to find the smallest insertion index of a given value to a list sorted in descending order, which is basically binary search.
+
+1. The procedure of binary search uses two pointers as the upper bound (included) on the left-hand side and lower bound on the right-hand side for the new value to be inserted.
+2. Each time, we look at the middle of the two pointers and compare it with the new value:
+   2.1. if the middle value is strictly larger than the new value, it means at least the new upper bound can be the middle
+   2.2. meanwhile, we want to see if we can further stress the range by letting the new upper bound be middle + 1
+   2.3. the value at middle + 1 can be either the new value (equal) or something still larger than that (larger), meaning the value at middle + 1 is no smaller than the new value, allowing us to further set middle + 1 as the new upper bound
+   2.4. as the opposite of 2.1, if the middle value is no larger than the new value, it means the middle position is on the right-hand side of the new value (exclusive), making it the new lower bound.
+3. Lastly, we want to name the function exactly as `reverse_bisect` following the instruction.
+
+[Implementation]
+Here's how you can implement this:
+
+```python
+def reverse_bisect(array, value):
+    high, low = 0, len(array)
+    while high < low:
+        mid = high + (low - high) // 2
+        if array[mid] > value:
+            # [high - mid - value - low)
+            high = mid + 1
+        else: # value > array[mid]
+            # [high - value - mid - low)
+            low = mid
+    return high
+```
+
+[Explanation]
+The `reverse_bisect` implements binary search for a list sorted in a descending order.
+It lets `high` to be the left-hand pointer and `low` to be the right-hand pointer, meaning that the value at `high` is always larger than that of `low`.
+Next, each time it looks at the middle value and compares it with the `value` variable to minimize the range between `high` and `low`.
+Because each time the `high` variable to set to the position which is either larger than or equal to `value`, eventually when the range is converged to minimal, `high` will point to the smallest index that holds `value` which aligns with the goal of the description.
+
+[Tests]
+Below includes tests that fully exercise various conditions for the function:
+
+```python
+# Testing the function with an empty array
+assert reverse_bisect([], 10) == 0, "Failed: Should insert at index 0 in an empty array"
+
+# Testing the function with a single element array
+assert reverse_bisect([10], 15) == 0, "Failed: Should insert at index 0 when value is larger"
+assert reverse_bisect([10], 5) == 1, "Failed: Should insert at index 1 when value is smaller"
+assert reverse_bisect([10], 10) == 0, "Failed: Should insert at index 0 when value is equal"
+
+# Testing with a multiple element array where elements are sorted in descending order
+assert reverse_bisect([20, 10, 5], 25) == 0, "Failed: Should insert at index 0 when value is the largest"
+assert reverse_bisect([20, 10, 5], 1) == 3, "Failed: Should insert at index 3 when value is the smallest"
+assert reverse_bisect([20, 10, 5], 10) == 1, "Failed: Should insert at index 1 when value is middle equal"
+assert reverse_bisect([20, 10, 5], 15) == 1, "Failed: Should insert at index 1 when value is between the first two elements"
+assert reverse_bisect([20, 10, 5], 5) == 2, "Failed: Should insert at index 2 when value is equal to the last element"
+
+# Test the consistency when all elements are the same
+assert reverse_bisect([10, 10, 10, 10], 10) == 0, "Failed: Should insert at the start when all elements are equal to the value"
+···
 
 ### Example 15
 [Code]
