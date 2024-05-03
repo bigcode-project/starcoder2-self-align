@@ -820,6 +820,189 @@ except ValueError:
 assert parse_duration('1000000s') == 1000000, "Very large number of seconds"
 ```
 
+### Example 15
+[Code]
+class Restaurant():
+    
+    def __init__(self, name, cuisine_type):
+        self.name = name.title()
+        self.cuisine_type = cuisine_type
+        self.number_served = 0
+
+    def describe_restaurant(self):
+        msg = f"{self.name} tiene los mejores {self.cuisine_type}."
+        print(f"\n{msg}")
+
+    def open_restaurant(self):
+        msg = f"{self.name} Está Abierta. ¡Adelante! \n"
+        print(f"\n{msg}")
+
+    def set_number_served(self, number_served):
+        self.number_served = number_served #Aquí establecemos la cantidad de clientes atendidos
+
+    def increment_number_served(self, additional_served):
+        self.number_served += additional_served #Aquí incrementamos la cantidad de clientes atendidos
+
+[Property]
+category: code generation (class implementation)
+language: Python
+concepts: class initialization, instance methods, encapsulation, data validation
+
+[Instruction]
+Create a Python class `Restaurant` with the following properties:
+- `name`: a string representing the name of the restaurant
+- `cuisine_type`: a string representing the type of cuisine served at the restaurant
+- `number_served`: an integer representing the number of customers served at the restaurant (default to 0)
+
+The class should have the following methods:
+- `describe_restaurant`: prints a message describing the restaurant's name and cuisine type
+- `open_restaurant`: prints a message indicating that the restaurant is open
+- `set_number_served`: sets the number of customers served to a given value
+- `increment_number_served`: increments the number of customers served by a given value
+
+Ensure that the `name` and `cuisine_type` properties are properly encapsulated and that the `number_served` property is validated to only accept positive integers.
+
+[Response]
+[Reasoning]
+To create a Python class `Restaurant` with the specified properties and methods, we can follow these steps:
+
+1. Define the class `Restaurant` with the `__init__` method to initialize the properties `name`, `cuisine_type`, and `number_served` with the given values. The `name` and `cuisine_type` properties can be encapsulated by using the `@property` decorator and defining getters and setters for these properties.
+2. Define the `describe_restaurant` and `open_restaurant` methods to print the appropriate messages.
+3. Define the `set_number_served` and `increment_number_served` methods to set and increment the `number_served` property, respectively. Ensure that the `number_served` property is validated to only accept positive integers.
+
+[Implementation]
+Here's how you can implement this class:
+
+```python
+class Restaurant:
+    def __init__(self, name, cuisine_type):
+        self._name = name.title()
+        self._cuisine_type = cuisine_type
+        self._number_served = 0
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def cuisine_type(self):
+        return self._cuisine_type
+
+    @property
+    def number_served(self):
+        return self._number_served
+
+    @number_served.setter
+    def number_served(self, value):
+        if not isinstance(value, int) or value < 0:
+            raise ValueError("number_served must be a positive integer")
+        self._number_served = value
+
+    def describe_restaurant(self):
+        msg = f"{self.name} tiene los mejores {self.cuisine_type}."
+        print(f"\n{msg}")
+
+    def open_restaurant(self):
+        msg = f"{self.name} Está Abierta. ¡Adelante! \n"
+        print(f"\n{msg}")
+
+    def set_number_served(self, number_served):
+        self.number_served = number_served
+
+    def increment_number_served(self, additional_served):
+        self.number_served += additional_served
+```
+
+[Explanation]
+This class `Restaurant` encapsulates the `name` and `cuisine_type` properties using the `@property` decorator and defines getters and setters for these properties. The `number_served` property is also encapsulated and validated to only accept positive integers. The methods `describe_restaurant` and `open_restaurant` print the appropriate messages, while `set_number_served` and `increment_number_served` set and increment the `number_served` property, respectively.
+
+[Tests]
+To verify the correctness of this class, we can run the following tests:
+
+```python
+restaurant = Restaurant("La Taquería", "comida mexicana")
+assert restaurant.name == "La Taquería"
+assert restaurant.cuisine_type == "comida mexicana"
+assert restaurant.number_served == 0
+
+restaurant.set_number_served(10)
+assert restaurant.number_served == 10
+
+restaurant.increment_number_served(5)
+assert restaurant.number_served == 15
+
+try:
+    restaurant.number_served = -1
+except ValueError:
+    pass
+else:
+    raise AssertionError("number_served should not accept negative values")
+```
+
+### Example 16
+[Code]
+def fib(limit):
+    nums = []
+    current, nxt = 0, 1
+    while len(nums) < limit:
+        current, nxt = nxt, current + nxt
+        nums.append(current)
+
+    return nums
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: Fibonacci sequence, list manipulation, efficient memory usage
+
+[Instruction]
+Write a Python function that returns a list of the first `limit` numbers in the Fibonacci sequence. The function should use efficient memory usage by only storing the last two numbers in the sequence and updating them in each iteration. The function should also validate the input `limit` to ensure it is a positive integer.
+
+[Response]
+[Reasoning]
+To generate the first `limit` numbers in the Fibonacci sequence, we can use a loop that iteratively calculates the next number in the sequence by adding the last two numbers. To efficiently use memory, we only need to store the last two numbers in the sequence and update them in each iteration. This approach avoids storing the entire sequence in memory, which can be costly for large values of `limit`.
+
+To validate the input `limit`, we can check if it is a positive integer using `isinstance` and `>= 0`.
+
+[Implementation]
+Here's how you can implement this function:
+
+```python
+def fibonacci_sequence(limit: int) -> list:
+    # Validate the input limit
+    if not isinstance(limit, int) or limit < 0:
+        raise ValueError("limit must be a positive integer")
+
+    # Base case for limit = 0 and 1
+    if limit == 0:
+        return []
+    elif limit == 1:
+        return [0]
+
+    # Initialize the list with the first two numbers in the sequence
+    nums = [0, 1]
+
+    # Keep generating numbers until the list reaches the limit
+    while len(nums) < limit:
+        # Calculate the next number in the sequence and append it to the list
+        nums.append(nums[-1] + nums[-2])
+
+    return nums
+```
+
+[Explanation]
+This function generates the first `limit` numbers in the Fibonacci sequence by iteratively calculating the next number and appending it to the list. The function also validates the input `limit` to ensure it is a positive integer.
+
+[Tests]
+You can test this function with a few test cases to ensure correctness:
+
+```python
+assert fibonacci_sequence(0) == []
+assert fibonacci_sequence(1) == [0]
+assert fibonacci_sequence(2) == [0, 1]
+assert fibonacci_sequence(10) == [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+```
+
 ### Example 17
 [Code]
 def get_param_groups(network):
