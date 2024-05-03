@@ -47,22 +47,17 @@ Here's how you can implement this function:
 
 ```python
 def encode_integer_to_chars(value: int) -> str:
-    # Base case for 0
     if value == 0:
         return chr(63)
 
     encoded_chars = []
     while value > 0:
-        # Extract the 5-bit chunk and add 63 to its value
         chunk = (value & 31) + 63
         value >>= 5
-        # If there's still more of the value left, set the continuation bit
         if value > 0:
             chunk |= 32
         encoded_chars.append(chr(chunk))
 
-    # Reverse the list of characters to start with the least significant chunk
-    # and join them into a single string
     return ''.join(reversed(encoded_chars))
 ```
 
@@ -128,16 +123,11 @@ def ceil_divide_without_div(n: int, b: int) -> int:
     assert isinstance(n, int) and n >= 0, "n must be a non-negative integer"
     assert isinstance(b, int) and b >= 0, "b must be a non-negative integer"
 
-    # Constructing the mask to check divisibility
     mask = (1 << b) - 1
     divisible = (n & mask) == 0
-
     result = n >> b
-
-    # If n is not divisible by 2**b, increment the result to get the ceiling
     if not divisible:
         result += 1
-
     return result
 ```
 
@@ -391,9 +381,7 @@ This implementation ensures that when `target` is not found, `left` represents t
 To test this function, you can use the example you provided:
 
 ```python
-# Provided example
 assert search_insert_position([1, 3, 5, 5, 6], 5) in [2, 3]
-# Additional cases
 assert search_insert_position([1, 3, 5, 5, 6], 2) == 1
 assert search_insert_position([1, 3, 5, 5, 6], 7) == 5
 ```
@@ -820,100 +808,6 @@ except ValueError:
 assert parse_duration('1000000s') == 1000000, "Very large number of seconds"
 ```
 
-### Example 11
-[Code]
-def reverse_bisect(scores, value):
-    low, high = 0, len(scores)
-    while low < high:
-        mid = (low + high) // 2
-        if value > scores[mid]:
-            high = mid
-        else:
-            low = mid + 1
-    return low
-
-
-if __name__ == "__main__":
-    arr = [5, 4, 2, 2, 1, 0]
-    op = reverse_bisect(arr, 3)
-    print(op)
-
-[Property]
-category: code generation (function implementation)
-language: Python
-concepts: binary search, array insertion
-
-[Instruction]
-Implement a Python function that efficiently identifies the insertion position (in the form of a zero-based index) of a new element (typed int or float) in a list sorted in descending order that can preserve the descending order. If there are multiple possible positions, always return the smallest index.
-
-```python
-# Test cases to validate the reverse_bisect function
-assert reverse_bisect([5, 4, 2, 2, 1, 0], 3) == 2, "Insertion index for 3 should be 2"
-assert reverse_bisect([10, 9, 8, 7, 6], 5) == 5, "Insertion index for 5 should be 5"
-assert reverse_bisect([100, 50, 50, 20], 50) == 1, "Insertion index for 50 should be 1"
-assert reverse_bisect([100, 50, 50, 20], 75) == 1, "Insertion index for 75 should be 1"
-assert reverse_bisect([], 10) == 0, "Insertion index in an empty list should be 0"
-assert reverse_bisect([3, 3, 3, 3], 3) == 0, "Insertion index for 3 in all 3s should be 0"
-```
-
-[Response]
-[Reasoning]
-The goal of the desired function is to find the smallest insertion index of a given value to a list sorted in descending order, which is basically binary search.
-
-1. The procedure of binary search uses two pointers as the upper bound (included) on the left-hand side and lower bound on the right-hand side for the new value to be inserted.
-2. Each time, we look at the middle of the two pointers and compare it with the new value:
-   2.1. if the middle value is strictly larger than the new value, it means at least the new upper bound can be the middle
-   2.2. meanwhile, we want to see if we can further stress the range by letting the new upper bound be middle + 1
-   2.3. the value at middle + 1 can be either the new value (equal) or something still larger than that (larger), meaning the value at middle + 1 is no smaller than the new value, allowing us to further set middle + 1 as the new upper bound
-   2.4. as the opposite of 2.1, if the middle value is no larger than the new value, it means the middle position is on the right-hand side of the new value (exclusive), making it the new lower bound.
-3. Lastly, we want to name the function exactly as `reverse_bisect` following the instruction.
-
-[Implementation]
-Here's how you can implement this:
-
-```python
-def reverse_bisect(array, value):
-    high, low = 0, len(array)
-    while high < low:
-        mid = high + (low - high) // 2
-        if array[mid] > value:
-            # [high - mid - value - low)
-            high = mid + 1
-        else: # value > array[mid]
-            # [high - value - mid - low)
-            low = mid
-    return high
-```
-
-[Explanation]
-The `reverse_bisect` implements binary search for a list sorted in a descending order.
-It lets `high` to be the left-hand pointer and `low` to be the right-hand pointer, meaning that the value at `high` is always larger than that of `low`.
-Next, each time it looks at the middle value and compares it with the `value` variable to minimize the range between `high` and `low`.
-Because each time the `high` variable to set to the position which is either larger than or equal to `value`, eventually when the range is converged to minimal, `high` will point to the smallest index that holds `value` which aligns with the goal of the description.
-
-[Tests]
-Below includes tests that fully exercise various conditions for the function:
-
-```python
-# Testing the function with an empty array
-assert reverse_bisect([], 10) == 0, "Failed: Should insert at index 0 in an empty array"
-
-# Testing the function with a single element array
-assert reverse_bisect([10], 15) == 0, "Failed: Should insert at index 0 when value is larger"
-assert reverse_bisect([10], 5) == 1, "Failed: Should insert at index 1 when value is smaller"
-assert reverse_bisect([10], 10) == 0, "Failed: Should insert at index 0 when value is equal"
-
-# Testing with a multiple element array where elements are sorted in descending order
-assert reverse_bisect([20, 10, 5], 25) == 0, "Failed: Should insert at index 0 when value is the largest"
-assert reverse_bisect([20, 10, 5], 1) == 3, "Failed: Should insert at index 3 when value is the smallest"
-assert reverse_bisect([20, 10, 5], 10) == 1, "Failed: Should insert at index 1 when value is middle equal"
-assert reverse_bisect([20, 10, 5], 15) == 1, "Failed: Should insert at index 1 when value is between the first two elements"
-assert reverse_bisect([20, 10, 5], 5) == 2, "Failed: Should insert at index 2 when value is equal to the last element"
-
-# Test the consistency when all elements are the same
-assert reverse_bisect([10, 10, 10, 10], 10) == 0, "Failed: Should insert at the start when all elements are equal to the value"
-···
-
 ### Example 15
 [Code]
 class Restaurant():
@@ -1119,7 +1013,6 @@ def get_param_groups(network):
 category: code generation (function implementation)
 language: Python
 concepts: neural network training, parameter groups, weight decay, bias regularization
-difficulty: medium
 
 [Instruction]
 Write a Python function for a typical neural network training process that returns a list of parameter groups suitable for optimizer's option such as `torch.optim.SGD`. Iterate over network parameters to properly remove `weight_decay` from all bias parameters. If the name of neural network parameters has the suffix `.weight`, it means that these parameters are non-bias parameters; otherwise, these parameters are bias parameters.
@@ -1204,7 +1097,6 @@ def alternatingCharacters(s):
 category: code generation (function implementation)
 language: Python
 concepts: 2-pointer technique, string manipulation, counting
-difficulty: medium
 
 [Instruction]
 Write a Python function that takes a string `s` and counts the minimum number of deletions required to change `s` into a string such that there are no matching adjacent characters. For example, if `s = "AABAAB"`, the function should return `2` because we can delete an `A` at positions 0 and 3 to make `s = "ABAB"` in 2 deletions. Use the two-pointer technique to efficiently traverse the string and count the number of deletions required.
@@ -1274,7 +1166,6 @@ def oxford_comma_text_to_list(phrase):
 category: code generation (function implementation)
 language: Python
 concepts: string manipulation, list concatenation, whitespace trimming
-difficulty: easy
 
 [Instruction]
 Write a Python function that takes a list of strings and returns a string with the items separated by commas and the last item preceded by "and". Ensure that the function can handle empty lists and lists with only one item.
@@ -1337,7 +1228,6 @@ def findLoop(head):
 category: code generation (class implementation)
 language: Python
 concepts: 2-pointer technique, linked list cycle detection, space complexity optimization
-difficulty: hard
 
 [Instruction]
 Implement a Python class with a method `find_loop` that detects and returns the node at the beginning of a loop in a linked list, if one exists. The method should have a time complexity of O(n) and a space complexity of O(1). Assume that the linked list has at least one node and that the loop is guaranteed to exist.
@@ -1418,7 +1308,6 @@ print(os.path.join('build', distutils_dir_name('lib')), end = '')
 category: code generation (function implementation)
 language: Python
 concepts: cross-platform compatibility, build directory naming, string formatting
-difficulty: medium
 
 [Instruction]
 Write a Python function that returns the name of a distutils build directory based on the current platform and Python version. The function should take a string `dname` as input and return a string in the format `dname.platform-version[0].version[1]`, where `platform` is the current platform, and `version[0]` and `version[1]` are the major and minor versions of the current Python interpreter, respectively. The function should also handle cross-platform compatibility.
@@ -1476,7 +1365,6 @@ def get_hashes(buf):
 category: code generation (function implementation)
 language: Python
 concepts: hash computation, file input handling, namedtuple, string formatting
-difficulty: medium
 
 [Instruction]
 Write a Python function that takes a file path or a binary string as input and returns a `namedtuple` containing the MD5, SHA1, SHA256, and SHA512 hashes of the input. The function should handle both file paths and binary strings as input and return the hashes as hexadecimal strings.
@@ -1551,7 +1439,6 @@ class Solution:
 category: code generation (class implementation)
 language: Python
 concepts: local maxima, global maxima, array traversal, greedy algorithm
-difficulty: hard
 
 [Instruction]
 Write a Python class with a method `isIdealPermutation(A)` that takes in an array `A` of integers and returns `True` if the number of local maxima in `A` is equal to the number of global maxima in `A`. A local maximum is an element in the array that is greater than both its adjacent elements. A global maximum is an element in the array that is greater than all elements to its right. Use a greedy algorithm to traverse the array and keep track of the local and global maxima.
@@ -1785,11 +1672,9 @@ Here is the Python program that implements this functionality:
 ```python
 def search_recursive(arr, target, index, indices_checked):
     """Recursive function to search for the target value in the list."""
-    # Base case: if index exceeds the length of the array, target not found
     if index >= len(arr):
         return -1
     indices_checked.append(index)
-    # Check if the current element is the target
     if arr[index] == target:
         return index
     return search_recursive(arr, target, index + 1, indices_checked)
@@ -1809,7 +1694,7 @@ if __name__ == "__main__":
 ```
 
 [Explanation]
-In this implementation, the `search_recursive` function recursively searches for the target element in the list and appends the indices checked to the `indices_checked` list. The `recursive_search` function acts as a wrapper to initiate the recursive search and return the result along with the list of indices checked.
+In this program, the `search_recursive` function recursively searches for the target element in the list and appends the indices checked to the `indices_checked` list. The `recursive_search` function acts as a wrapper to initiate the recursive search and return the result along with the list of indices checked.
 
 [Tests]
 To test the implementation, we need to ensure that both the index of the target element and the list of indices checked are correct. Here are the test cases:
@@ -1841,4 +1726,186 @@ expected_indices3 = list(range(expected_result3 + 1))
 result3, indices_checked3 = recursive_search(arr3, target3)
 assert result3 == expected_result3
 assert indices_checked3 == expected_indices3
+```
+
+### Example 27
+[Code]
+Data = np.zeros([break_points[-1],size_blocks])
+Data_stacked = np.zeros([break_points[-1]-num_blocks+1, size_blocks*num_blocks])
+cluster_point_list = []
+for counter in xrange(len(break_points)):
+        break_pt = break_points[counter]
+        cluster = seg_ids[counter]
+        if counter == 0:
+                old_break_pt = 0
+        else:
+                old_break_pt = break_points[counter-1]
+        for num in xrange(old_break_pt,break_pt):
+                ##generate the point from this cluster
+                # print "num is:", num
+                if num == 0:
+
+[Property]
+category: code generation (program implementation)
+language: Python
+concepts: NumPy array initialization, iteration over break points, cluster segmentation, nested loops
+
+[Instruction]
+Implement a Python program that initializes a NumPy array randomly (0--1) and segments it into clusters based on provided breakpoints. Each cluster is defined by consecutive elements between two breakpoints. The output should be a list of NumPy arrays representing these clusters.
+
+For example, given a size 10 and breakpoints `[3, 6, 8]`, the program should first initialize a NumPy array of 10 random elements between 0 and 1 and then output three clusters: elements at indices `0-2`, `3-5`, `6-7`, and `8-9`. Ensure that the program handles cases where breakpoints are at the boundaries of the array or if there are no breakpoints, in which case the entire array should be a single cluster. Include error handling to manage invalid inputs such as negative array sizes or breakpoints that are out of range.
+
+[Response]
+[Reasoning]
+We can implement this Python program in Numpy following these steps:
+
+1. Initialize a random NumPy array (0--1) of the specified size.
+2. Iterate over the provided breakpoints to segment the array into clusters.
+3. For each cluster, extract the elements between the current and previous breakpoints.
+
+[Implementation]
+Here is an example implementation of the program:
+
+```python
+import numpy as np
+
+def segment_array(data, break_points):
+    break_points = [0] + break_points + [len(data)]
+    segmented_arrays = []
+    for i in range(len(break_points) - 1):
+        start_index = break_points[i]
+        end_index = break_points[i + 1]
+        segmented_arrays.append(data[start_index:end_index])
+    return segmented_arrays
+
+def create_clusters(size, break_points):
+    if size <= 0:
+        raise ValueError("Array size must be positive.")
+    data = np.random.rand(size)
+    clusters = segment_array(data, break_points)
+    return clusters
+
+# Example usage
+if __name__ == "__main__":
+    size = 10
+    break_points = [3, 6, 8]
+    clusters = create_clusters(size, break_points)
+    for i, cluster in enumerate(clusters):
+        print(f"Cluster {i}: {cluster}")
+```
+
+[Explanation]
+In this implementation, `segment_array` transforms the input data array into a list of NumPy arrays based on the provided breakpoints. The `main` function initializes a random NumPy array of a specified size and calls `segment_array` to segment the array into clusters based on the breakpoints.
+
+[Tests]
+To test the program, we can verify that the values in each cluster are within the expected range (0--1) and that the clusters are correctly segmented. Here are some test cases:
+
+```python
+def test_segmentation(size, break_points):
+    clusters = create_clusters(size, break_points)
+    for cluster in clusters:
+        assert np.all(cluster >= 0) and np.all(cluster <= 1)
+    break_points = [0] + break_points + [size]
+    for i in range(len(break_points) - 1):
+        assert len(clusters[i]) == break_points[i + 1] - break_points[i]
+
+# Test cases
+test_cases = [
+    (20, [5, 10, 15]),
+    (10, [3, 6, 8]),
+    (15, [3, 6, 12]),
+    (30, [7, 14, 21, 27]),
+    (5, [1]),
+    (10, []),
+    (50, [10, 20, 30, 40]),
+]
+
+for size, breakpoints in test_cases:
+    test_segmentation(size, breakpoints)
+```
+
+### Example 28
+[Code]
+if match_case == 'auto':
+    if len(set([ch_name.lower() for ch_name in ch_names])) < len(set(ch_names)):
+        match_case = True
+    else:
+        match_case = False
+
+if match_case:
+    picks = mne.pick_channels(ch_names, pick_chs, ordered=ordered)
+else:
+    ch_names = [ch_name.lower() for ch_name in ch_names]
+    pick_chs = [pick_ch.lower() for pick_ch in pick_chs]
+    picks = mne.pick_channels(ch_names, pick_chs, ordered=ordered)
+
+return picks
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: case-insensitive string matching, controlled case matching based on an option, list comprehension
+
+[Instruction]
+Construct a Python program that processes a list of strings provided by the user. The first element is a target string, the second is either 'CaseSensitive' or 'CaseInsensitive' to determine the matching approach, and the remaining elements are candidates for comparison. The program should output the number of times the target appears among the candidates according to the specified matching rule. The solution should include robust error handling to validate the matching rule and check that at least two strings are provided before proceeding.
+
+For example, given the input `['apple', 'CaseInsensitive', 'Apple', 'banana', 'APPLE']`, the program should output `2` since 'Apple' and 'APPLE' match the target 'apple' in a case-insensitive manner.
+
+[Response]
+[Reasoning]
+You can implement the program by first parsing the input list, with proper validation to ensure that it contains the target string and the matching rule. Based on the matching rule, you can compare the target string with the candidate strings either in a case-sensitive or case-insensitive manner. Finally, you can print the count of matches.
+
+[Implementation]
+Here is an example implementation of the program:
+
+```python
+def count_matches(input_list):
+    if not input_list or len(input_list) < 2:
+        raise ValueError("Input list must contain at least two items: the target string and the matching rule.")
+    
+    target_string, matching_rule = input_list[0], input_list[1]
+    if matching_rule not in ['CaseSensitive', 'CaseInsensitive']:
+        raise ValueError("Matching rule must be either 'CaseSensitive' or 'CaseInsensitive'.")
+
+    candidates = input_list[2:]
+    if matching_rule == 'CaseSensitive':
+        match_count = sum(1 for candidate in candidates if candidate == target_string)
+    else:
+        target_string = target_string.lower()
+        match_count = sum(1 for candidate in candidates if candidate.lower() == target_string)
+
+    return match_count
+
+def main():
+    input_list = input().split()
+    print(count_matches(input_list))
+
+if __name__ == "__main__":
+    main()
+```
+
+[Explanation]
+The `count_matches` function implements the main logic of the program, counting the occurrences of the target string among the candidate strings based on the specified matching rule. The `main` function reads the input list from the user, calls `count_matches`, and prints the count of matches.
+
+[Tests]
+You can test the program with various inputs to ensure it handles different scenarios correctly:
+
+```python
+assert count_matches(['apple', 'CaseInsensitive', 'Apple', 'banana', 'APPLE']) == 2
+assert count_matches(['apple', 'CaseSensitive', 'Apple', 'banana', 'APPLE']) == 0
+assert count_matches(['apple', 'CaseInsensitive']) == 0
+assert count_matches(['apple', 'CaseInsensitive', 'apple', 'APPLE', 'aPpLe', 'banana']) == 3
+assert count_matches(['apple', 'CaseSensitive', 'apple', 'APPLE', 'aPpLe', 'banana']) == 1
+
+try:
+    count_matches(['apple'])
+    assert False
+except ValueError as e:
+    assert str(e) == "Input list must contain at least two items: the target string and the matching rule."
+
+try:
+    count_matches(['apple', 'InvalidRule', 'Apple'])
+    assert False
+except ValueError as e:
+    assert str(e) == "Matching rule must be either 'CaseSensitive' or 'CaseInsensitive'."
 ```
