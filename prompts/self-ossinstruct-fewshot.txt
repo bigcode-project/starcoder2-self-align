@@ -682,3 +682,82 @@ assert create_folds(range(8), 2) == [range(0, 4), range(4, 8)]
 assert create_folds(range(25), -5) == []
 assert create_folds(range(6), 2) == [range(0, 3), range(3, 6)]
 ```
+
+### Example 10
+[Code]
+import math
+
+def alt2temp(h, mmHg=29.92):
+    if mmHg != 29.92:
+        dh = ((8.95e10 * 288.15) /
+              (-32.174 * 28.964) *
+              math.log(mmHg / 29.92))
+        h += dh
+    To = 518.69
+    if h > 36089:
+        T = 389.99
+    else:
+        T = To * (1 - 6.87559e-6 * h)
+    return T
+
+[Property]
+category: code generation (function implementation)
+language: Python
+concepts: mathematical modeling, environmental physics, parameter default values
+
+[Instruction]
+Write a Python function that converts altitude to temperature using the standard atmosphere model. The function should also adjust for variations in barometric pressure given by the parameter mmHg.
+
+[Response]
+[Reasoning]
+To compute the temperature at a given altitude, considering the barometric pressure, we can use the standard atmospheric model modified for non-standard pressures. The function altitude_to_temperature calculates the temperature at a specified altitude h, adjusting the altitude if the barometric pressure mmHg differs from the standard 29.92 inches of Hg. The temperature calculation depends on whether the altitude is above or below 36,089 feet.
+
+[Implementation]
+Here is an implementation of the desired function:
+
+```python
+import math
+
+def altitude_to_temperature(h, mmHg=29.92):
+    """
+    Converts altitude (in feet) to temperature (in Kelvin) under varying barometric pressures.
+    The default barometric pressure is set at 29.92 inches of Hg.
+    
+    Parameters:
+    h (float): Altitude in feet.
+    mmHg (float): Current barometric pressure in inches of mercury.
+    
+    Returns:
+    float: Temperature in Kelvin.
+    """
+    if mmHg != 29.92:
+        # Calculate the corrected altitude based on the current pressure
+        dh = ((8.95e10 * 288.15) / (-32.174 * 28.964) * math.log(mmHg / 29.92))
+        h += dh
+
+    # Define the baseline temperature at sea level
+    base_t = 518.69
+    if h > 36089:
+        # Use constant temperature above 36,089 feet
+        return = 389.99
+
+    # Calculate temperature based on altitude below 36,089 feet
+    return base_t * (1 - 6.87559e-6 * h)
+```
+
+[Explanation]
+This function handles the conversion of altitude to temperature by adjusting for differences in barometric pressure from the standard. The math.log function is used to adjust the altitude based on the deviation of mmHg from 29.92. 
+
+If the altitude exceeds 36,089 feet, a constant temperature is used, as specified by standard atmospheric models. Below this altitude, the temperature decreases linearly with an increase in altitude according to the given formula.
+
+[Tests]
+The test cases below can validate the functionality in various scenarios:
+
+```python
+# Test at sea level under standard pressure
+assert round(altitude_to_temperature(0), 2) == 518.69
+# Test at 40,000 feet under standard pressure
+assert altitude_to_temperature(40000) == 389.99
+# Test with non-standard barometric pressure
+assert round(altitude_to_temperature(10000, 30.92), 2) != 518.69
+```
