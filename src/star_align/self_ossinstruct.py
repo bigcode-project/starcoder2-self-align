@@ -95,12 +95,12 @@ class Property:
     def random_exercise(concepts: list[str], language: str) -> "Property":
         category = random.choice(
             [
-                "code generation (function implementation)",
-                "code generation (class implementation)",
-                "code generation (program implementation)",
+                "function implementation",
+                "class implementation",
+                "program implementation",
             ]
         )
-        # difficulty = random.choice(["easy", "medium", "hard"])
+        difficulty = random.choice(["easy", "medium", "hard"])
         return Property(
             category=category,
             language=language,
@@ -145,7 +145,6 @@ class Example:
     property: Property
     snippet: str
     instruction: str
-    solution: str | None
     response: str
 
     @staticmethod
@@ -193,10 +192,10 @@ class Fewshot:
         return getattr(self, attr_name)
 
     def valid_examples(self, mode: InstructMode) -> list[Example]:
-        if mode in ["E->S", "I->RT", "I->R"]:
-            return [
-                example for example in self.examples if example.solution is not None
-            ]
+        # if mode in ["E->S", "I->RT", "I->R"]:
+        #     return [
+        #         example for example in self.examples if example.solution is not None
+        #     ]
         return self.examples
 
     def random_prompt(
@@ -210,7 +209,25 @@ class Fewshot:
         assert (
             0 < num_fewshots <= len(valid_examples)
         ), f"{num_fewshots=}, {len(valid_examples)=}"
-        examples = random.sample(valid_examples, k=num_fewshots)
+        if mode == "C->I":
+            property = parse_property(format_args["property"])
+            assert property is not None
+            category = property.category
+            # Find one example with the same category
+            matching_example = next(
+                (
+                    example
+                    for example in valid_examples
+                    if example.property.category == category
+                ),
+                None,
+            )
+            assert matching_example is not None
+            examples = [matching_example] + random.sample(valid_examples, k=num_fewshots - 1)
+            random.shuffle(examples)
+        else:
+            examples = random.sample(valid_examples, k=num_fewshots)
+
         body = "\n\n".join(
             f"## Example {idx + 1}\n{example.prompt(mode)}"
             for idx, example in enumerate(examples)
@@ -220,9 +237,6 @@ class Fewshot:
         prefix = f"## Example {len(examples) + 1}\n" + prefix_template.format(
             **format_args
         )
-        if mode == "E->S":
-            # NOTE: special handling for python exercise generation
-            prefix += "```python"
         system_prompt = self.system_prompt(mode)
         full_prompt = f"{system_prompt}\n\n{body}\n\n{prefix}"
         assert prompting_mode == "completion", "Only completion is supported for now"
@@ -262,18 +276,17 @@ def get_ossinstruct_fewshots() -> Fewshot:
     examples = list[Example]()
     for example_str in examples_str:
         pattern = (
-            r"\[Code\]\n|\[Property\]\n|\[Instruction\]\n|\[Solution\]\n|\[Response\]\n"
+            r"\[Code\]\n|\[Property\]\n|\[Instruction\]\n|\[Response\]\n"
         )
-        _, snippet, property, instruction, solution, response = re.split(
+        _, snippet, property, instruction, response = re.split(
             pattern, example_str
         )
         snippet = snippet.rstrip()
         property = parse_property(property)
         assert property is not None
         instruction = instruction.strip()
-        solution = None if solution.strip() == "" else solution.strip()
         response = response.strip()
-        example = Example(property, snippet, instruction, solution, response)
+        example = Example(property, snippet, instruction, response)
         examples.append(example)
     # if args.external_data is not None:
     #     examples.extend(external_examples)
