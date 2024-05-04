@@ -27,6 +27,7 @@ def _split_into_chunks(value):
 [Property]
 category: code generation (function implementation)
 language: Python
+difficulty: medium
 concepts: 5-bit chunk encoding with bitwise shifts, ASCII value manipulation, continuation bit signaling
 
 [Instruction]
@@ -61,13 +62,10 @@ def encode_integer_to_chars(value: int) -> str:
     return ''.join(reversed(encoded_chars))
 ```
 
-[Explanation]
-This function processes the integer bit by bit in 5-bit chunks, applying bitwise operations to extract and manipulate these chunks, then converts each chunk into a character using the specified encoding scheme. This approach efficiently handles the encoding in a loop until all bits of the integer have been processed.
-
-Note that this function is designed for non-negative integers and does not support negative integers by default because negative numbers are represented in two's complement form, where the most significant bit (MSB) indicates the sign. In Python, right-shifting (`>>`) a negative integer preserves the sign bit, effectively making the never executed due to the `value > 0` condition. If you change it to `value != 0`, it will then lead to an infinite loop if the same encoding logic is applied to negative integers without modifications.
+Keep in mind that this function is designed for non-negative integers. In Python, right-shifting (`>>`) a negative integer preserves the sign bit, which could lead to infinite loops or other incorrect behaviors if the same encoding approach is applied to negative integers without appropriate adjustments.
 
 [Tests]
-You can validate this function with a few test cases to ensure correctness:
+You can validate this function with the following test cases that cover scenarios from zero to a number requiring more than one chunk, ensuring the function operates as expected:
 
 ```python
 assert encode_integer_to_chars(0) == chr(63)
@@ -76,8 +74,6 @@ assert encode_integer_to_chars(31) == chr(63 + 31)
 assert encode_integer_to_chars(int(0b1)) == chr(0b1 + 63)
 assert encode_integer_to_chars(int(0b1000001)) == chr(0b10 + 63) + chr(63 + 0b100001)
 ```
-
-These tests cover scenarios from zero to a number requiring more than one chunk, ensuring the function operates as expected.
 
 ### Example 2
 [Code]
@@ -97,6 +93,7 @@ def ceil_shift(n, b):
 [Property]
 category: code generation (function implementation)
 language: Python
+difficulty: medium
 concepts: bitwise operation for division, ceiling without division or float, input validation with assertions, non-negative integer checks
 
 [Instruction]
@@ -131,11 +128,10 @@ def ceil_divide_without_div(n: int, b: int) -> int:
     return result
 ```
 
-[Explanation]
 This function calculates the ceiling of `n / 2**b` purely through bitwise manipulation and integer arithmetic. The assertions ensure the input constraints are met, as specified.
 
 [Tests]
-To verify the correctness of the function, we can run the following tests:
+To verify the correctness of the function, we can compare the results of our function with the expected results obtained using `math.ceil` to ensure the correctness of the ceiling division operation:
 
 ```python
 import math
@@ -146,8 +142,6 @@ assert ceil_divide_without_div(100, 5) == math.ceil(100 / 2**5)
 assert ceil_divide_without_div(0, 3) == math.ceil(0 / 2**3)
 assert ceil_divide_without_div(1, 0) == math.ceil(1 / 2**0)
 ```
-
-These tests compare the results of our function with the expected results obtained using `math.ceil` to ensure the correctness of the ceiling division operation.
 
 ### Example 3
 [Code]
@@ -168,6 +162,7 @@ def prime(x):
 [Property]
 category: code generation (class implementation)
 language: Python
+difficulty: medium
 concepts: prime number memoization, n-th prime calculation, efficiency in prime checks
 
 [Instruction]
@@ -203,41 +198,30 @@ class PrimeFinder:
         return True
 
     def find_nth_prime_memoized(self, n: int) -> int:
-        # Return the n-th prime directly if already in cache
         if n <= len(self.primes):
             return self.primes[n - 1]
 
-        # Start checking from the number after the last prime in cache
         current_num = self.primes[-1] + 2
         while len(self.primes) < n:
             if self.is_prime(current_num):
-                # Cache the new prime
                 self.primes.append(current_num)
-            # Skip even numbers
             current_num += 2
 
         return self.primes[n - 1]
 ```
 
-[Explanation]
-This class `PrimeFinder` initializes with a cache of the first two primes. The `is_prime` method checks if a number is prime by dividing it with cached primes up to its square root. The `find_nth_prime_memoized` method uses this helper method to find and cache primes up to the requested `n`th one. Subsequent calls leverage cached primes for efficiency.
-
 [Tests]
-Here's how you can test this class:
+Here's how you can test this class by verifying that the class correctly finds the first few primes and that subsequent calls return the memoized results directly:
 
 ```python
-# Test that the class correctly finds the first few primes
 first_few_primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
 prime_finder = PrimeFinder()
 for i, prime in enumerate(first_few_primes, 1):
     assert prime_finder.find_nth_prime_memoized(i) == prime
 
-# Test that the memoized results are returned directly
 for i, prime in enumerate(first_few_primes, 1):
     assert prime_finder.find_nth_prime_memoized(i) == prime
 ```
-
-These tests verify that the class correctly finds the first few primes and that subsequent calls return the memoized results directly.
 
 ### Example 4
 [Code]
@@ -290,17 +274,17 @@ def f1(a, b):
     return (a + 1) * (b + 1) - 1
 
 def f2(k):
-    if k % 2 == 0:  # Check if k is even
+    if k % 2 == 0:
         return (k**2) / 2 + 2 * k + 1
-    else:  # k is odd
+    else:
         return ((k + 1)**2) / 2 + k + 1
 
 def f1_f2_combined(a, b):
     return f2(f1(a, b))
 ```
 
-[Explanation]
 In this implementation:
+
 - `f1(a, b)` calculates the first formula you've given.
 - `f2(k)` calculates the second formula, with a conditional branch for whether `k` is even or odd.
 - `f1_f2_combined(a, b)` uses the output of `f1(a, b)` as the input for `f2(k)` and returns the result.
@@ -334,6 +318,7 @@ def tripletsSorting(nums, t):
 [Property]
 category: code generation (function implementation)
 language: Python
+difficulty: easy
 concepts: insertion point for a sorted array, optimized time complexity
 
 [Instruction]
@@ -358,35 +343,28 @@ def search_insert_position(nums: List[int], target: int) -> int:
     as `target` can be inserted at index 2 or 3 to maintain the sorted order.
     """
     left, right = 0, len(nums) - 1
-
     while left <= right:
         mid = (left + right) // 2
-
-        # Directly return the index if there's an exact match
         if nums[mid] == target:
             return mid
         elif nums[mid] < target:
             left = mid + 1
         else:
             right = mid - 1
-
-    # At this point, `left` is the correct insertion index
     return left
 ```
 
-[Explanation]
 This implementation ensures that when `target` is not found, `left` represents the correct insertion index. This is because at the end of the loop, all elements to the left of `left` are smaller than `target`, all elements to the right of `left` are equal to or larger than `target`, and `left > right`. Therefore, `left` is the correct index for insertion to maintain the sorted order.
 
 [Tests]
-To test this function, you can use the example you provided:
+You can test the function with scenarios where the target is found at multiple indices and where the target is not present in the array:
 
 ```python
 assert search_insert_position([1, 3, 5, 5, 6], 5) in [2, 3]
 assert search_insert_position([1, 3, 5, 5, 6], 2) == 1
 assert search_insert_position([1, 3, 5, 5, 6], 7) == 5
+assert search_insert_position([1, 3, 5, 5, 6], 0) == 0
 ```
-
-These tests cover the scenario where the target is found at multiple indices, as well as cases where the target is not present in the array but needs to be inserted at the correct position to maintain the sorted order.
 
 ### Example 6
 [Code]
@@ -413,7 +391,8 @@ def decompress(self):
 [Property]
 category: code generation (class and function implementation)
 language: Python
-concepts: 
+difficulty: medium
+concepts: decoding compressed data, binary tree traversal, byte array processing
 
 [Instruction]
 Write a Python function `huffman_decompress` that takes two arguments: `compressed_data`, a byte array of 0/1 sequence representing Huffman compressed data, and `huffman_tree`, a Huffman tree that stores the actual data (each leaf is associated with a character). The function should return the original uncompressed data as `bytes`. Define the `HuffmanNode` class yourself as a general tree structure with a `children` list.
@@ -436,29 +415,22 @@ class HuffmanNode:
         self.children = []
 
 def huffman_decompress(compressed_data, huffman_tree):
-    # Store the decompressed characters here
     result = []
-
-    # Start traversal from the root of the Huffman tree
     node = huffman_tree
 
-    # Each byte represents a 0/1 bit in `compressed_data`
+    # Each byte represents a bit in `compressed_data`
     for bit in compressed_data:
-        # Check if the node has children
         if len(node.children) > 0:
             node = node.children[int(bit)]
-        # After moving to the child, check if it's a leaf node
         if len(node.children) == 0:
             result.append(node.value)
-            # Reset to start from the root for the next character
             node = huffman_tree
 
-    # Convert the result to bytes
     return "".join(result).encode()
 ```
 
 [Explanation]
-In this implementation, we assume that `compressed_data` is a byte array where each byte represents a 0/1 bit in the Huffman tree. We traverse the tree according to the bits in `compressed_data`, and when we reach a leaf node, we append the associated character to the result. Finally, we convert the result to `bytes` by concatenating the characters and encoding them.
+In this implementation, each byte in `compressed_data` represents a bit, guiding the traversal of the Huffman tree. Characters are appended upon reaching leaf nodes and the result is then encoded to `bytes`.
 
 [Tests]
 You can test this function with a sample Huffman tree and compressed data to verify that the decompression works correctly:
@@ -489,6 +461,7 @@ assert format_size(1024*512) == '512.0KB'
 [Property]
 category: code generation (function implementation)
 language: Python
+difficulty: easy
 concepts: arithmetic operations for size conversion, rounding numbers, dynamic unit selection, string interpolation
 
 [Instruction]
@@ -502,17 +475,18 @@ To create such a function, we can use a loop to iterate through a predefined lis
 ```python
 def format_size(size_bytes):
     units = ['bytes', 'KB', 'MB', 'GB', 'TB']
+
+    # Directly return for 0 bytes to avoid division by zero in loop
     if size_bytes == 0:
-        return "0.0bytes"  # Directly return for 0 bytes to avoid division by zero in loop
+        return "0.0bytes"  
+
     num = abs(size_bytes)
     unit = units[0]
-
     for u in units[1:]:
         if num < 1024.0:
             break
         num /= 1024.0
         unit = u
-
     formatted_size = f"{num:.1f}{unit}"
     return formatted_size if size_bytes >= 0 else f"-{formatted_size}"
 ```
@@ -521,7 +495,7 @@ def format_size(size_bytes):
 This implementation handles both positive and negative file sizes and returns the formatted size as a string, even though negative sizes are not common in real-world scenarios.
 
 [Tests]
-You can write the following test cases to ensure it works correctly:
+We can write tests that cover both positive and negative sizes across different units to validate the correctness of the `format_size` function:
 
 ```python
 test = [
@@ -534,8 +508,6 @@ for size, expected_output in test_data:
     assert format_size(size) == expected_output
     assert format_size(-size) == f"-{expected_output}"
 ```
-
-These test cases cover both positive and negative sizes across different units to validate the correctness of the `format_size` function.
 
 ### Example 8
 [Code]
@@ -552,10 +524,11 @@ assert unify_stringlist(list("abc")) == list("abc")
 [Property]
 category: code generation (function implementation)
 language: Python
+difficulty: easy
 concepts: list comprehension, unique string creation, precondition checking for type validation
 
 [Instruction]
-Design a Python function to encode a list of strings into a unique list with the same length, order, and meaning. The new list is formed by appending asterisks (*) to duplicate strings. For instance, given ['a', 'a', 'b', 'a', 'c'], the function should return ['a', 'a*', 'b', 'a**', 'c'], while for ['a', 'b', 'c'] it should return ['a', 'b', 'c'] without any changes. Make a precondition check through `assert` to ensure the input is a list of strings.
+Design a Python function to encode a list of strings into a unique list with the same length, order, and meaning. The new list is formed by appending asterisks (*) to duplicate strings. For instance, given ['a', 'a', 'b', 'a', 'c'], the function should return ['a', 'a*', 'b', 'a**', 'c'], while for ['a', 'b', 'c'] it should return ['a', 'b', 'c'] without any changes. Write assertions to ensure the input is a list of strings.
 
 Solve the problem in two lines of code, one for the precondition check and the other for the main logic.
 
@@ -572,13 +545,10 @@ def encode_strings(input_list):
     return [s + '*' * input_list[:i].count(s) for i, s in enumerate(input_list)]
 ```
 
-[Explanation]
-The `enumerate` function provides both the index and the string in each iteration, allowing you to count the occurrences of the string before the current index.
-
-Note that although the function is concise, it is not the most efficient solution for large lists, as the `count` method has a time complexity of O(n) for each iteration. For larger lists, a more efficient approach might be to use a dictionary to store the counts of each string and then iterate through the list to append the appropriate number of `'*'` to each string.
+Note that although the function is concise, it is not the most efficient solution for large lists, as the `count` method has a time complexity of O(n) for each iteration.
 
 [Tests]
-Now you can test your function with the provided examples:
+You can test the function with the provided examples to ensure it correctly encodes the strings as expected:
 
 ```python
 assert encode_strings(['a', 'a', 'b', 'a', 'c']) == ['a', 'a*', 'b', 'a**', 'c']
@@ -615,7 +585,7 @@ language: Python
 concepts: data partitioning and slicing, learning from input-output examples
 
 [Instruction]
-Construct a Python function `create_folds(data, count)` to create a list of folds from the given data, where each fold is a subsequence of the original data. The length of each fold should be approximately equal with at most a difference of 1. The function should satisfy the following assertion:
+Construct a Python function `create_folds(data, count)` to create a list of folds from the given data, where each fold is a subsequence of the original data. The length of each fold should be approximately equal with at most a difference of 1. The function should satisfy the following assertions:
 
 ```python
 assert create_folds(range(12), 2) == [range(0, 6), range(6, 12)]
@@ -648,17 +618,14 @@ def create_folds(data, count):
 
     folds = []
     start_index = 0
-
     for i in range(count):
         # Add 1 element to each of the first `remainder` folds
         end_index = start_index + fold_size + (1 if i < remainder else 0)
         folds.append(range(start_index, end_index))
         start_index = end_index
-
     return folds
 ```
 
-[Explanation]
 This implementation ensures that each fold has an equal length with at most a difference of 1 between any two folds. It handles edge cases, such as a non-positive `count`, by returning an empty list as specified.
 
 [Tests]
@@ -687,13 +654,16 @@ def duration(string):
 [Property]
 category: code generation (function implementation)
 language: Python
-concepts: regular expression, unit conversion, error handling
+difficulty: medium
+concepts: regular expression for pattern matching, dictionary lookup for suffix mapping, error handling with exceptions
 
 [Instruction]
 Create a Python function that converts a string representation of a time duration into its total number of seconds. 
 The input string should follow a format that includes a numeric part followed by a time unit suffix without any spaces between.
 The time unit can be seconds in the form of 's' or 'sec', minutes in the form of 'm' or 'min', hours in the form of 'h' or 'hour', and days in the form of 'd' or 'day' (units are in small case).
 If the input format is invalid, the function should raise a ValueError.
+
+For example, the function should pass the following assertions:
 
 ```python
 assert parse_duration('15s') == 15
@@ -711,11 +681,13 @@ except ValueError as e:
 The desired function aims to transform a string representation into its total number of seconds. The implementation can be split into two parts:
 
 Input validation:
+
 1. The input string includes two parts: a number as the prefix and the unit as the suffix.
 2. We can use regular expression to assert the prefix must be a number (d+) and suffix must be one of s/sec/m/min/h/hour/d/day.
 3. If the input string cannot the regular expression, we raise a ValueError. 
 
 Result computation:
+
 1. Based on the matches of regular expression, we capture the number and unit part.
 2. We convert the unit to seconds: 's'/'sec' -> 1 second, 'm'/'min' -> 60 seconds, 'h'/'hour' -> 3600 seconds, 'd'/'day' -> 86400 seconds.
 3. We multiply the seconds of the unit and the prefix number and return it as an integer. 
@@ -727,39 +699,23 @@ Here's how you can implement this:
 import re
 
 def parse_duration(duration_str):
-    # Define a regex pattern to match the input string
     pattern = re.compile(r"(\d+)(s|sec|m|min|h|hour|d|day)$")
     match = pattern.match(duration_str)
-    
-    # Raise an error if the input string does not match the pattern
     if not match:
         raise ValueError(f"Invalid duration: {duration_str}")
-    
-    # Extract the numeric part and the suffix from the matched groups
     value, suffix = match.groups()
     value = int(value)
-
-    # Define a dictionary mapping suffixes to their respective number of seconds
     suffix_map = {
         's': 1, 'sec': 1,
         'm': 60, 'min': 60,
         'h': 3600, 'hour': 3600,
         'd': 86400, 'day': 86400
     }
-
-    # Calculate and return the total number of seconds
     return value * suffix_map[suffix]
 ```
 
-[Explanation]
-The implementation begins by defining a regular expression pattern that expects a numeric value followed by a valid time unit suffix. 
-The function then tries to match this pattern against the input string. 
-If the match is successful, it extracts the numeric value and the suffix. 
-A dictionary (suffix_map) maps each suffix to the number of seconds it represents. 
-Using this dictionary, the function calculates the total number of seconds corresponding to the input and returns it.
-
 [Tests]
-You can test your code with the provided assertions to verify that the function works correctly:
+You can test your code on various valid and invalid inputs to ensure that the function behaves as expected:
 
 ```python
 # Test additional valid inputs with different suffix representations
@@ -778,37 +734,23 @@ assert parse_duration('001s') == 1, "Leading zeros"
 assert parse_duration('010min') == 600, "Leading zeros with minutes"
 
 # Test case sensitivity and invalid suffix handling
-try:
-    parse_duration('10S')
-except ValueError:
-    pass
+def assert_value_error(duration_str):
+    try:
+        parse_duration(duration_str)
+    except ValueError:
+        pass
 
-try:
-    parse_duration('2hours')
-except ValueError:
-    pass
-
-try:
-    parse_duration('5 mins')
-except ValueError:
-    pass
-
-# Test incorrect formats
-try:
-    parse_duration('h1')
-except ValueError:
-    pass
-
-try:
-    parse_duration('100')
-except ValueError:
-    pass
+assert_value_error('10S')
+assert_value_error('2hours')
+assert_value_error('5 mins')
+assert_value_error('h1')
+assert_value_error('100')
 
 # Test extremely large numbers
 assert parse_duration('1000000s') == 1000000, "Very large number of seconds"
 ```
 
-### Example 15
+### Example 11
 [Code]
 class Restaurant():
     
@@ -834,97 +776,87 @@ class Restaurant():
 [Property]
 category: code generation (class implementation)
 language: Python
-concepts: class initialization, instance methods, encapsulation, data validation
+difficulty: hard
+concepts: object-oriented programming, string formatting and manipulation, encapsulation, input validation
 
 [Instruction]
-Create a Python class `Restaurant` with the following properties:
-- `name`: a string representing the name of the restaurant
-- `cuisine_type`: a string representing the type of cuisine served at the restaurant
-- `number_served`: an integer representing the number of customers served at the restaurant (default to 0)
+Develop a Python class `StringEnhancer` that offers advanced tools for managing a string. The class should maintain an internal state that is initially an empty string. The class should support extending the string with additional prefix or suffix, converting the entire string to lowercase or uppercase, and altering specific characters within the string. All the operations are communicated through a central method: `apply_operation(self, operation: str)`.
 
-The class should have the following methods:
-- `describe_restaurant`: prints a message describing the restaurant's name and cuisine type
-- `open_restaurant`: prints a message indicating that the restaurant is open
-- `set_number_served`: sets the number of customers served to a given value
-- `increment_number_served`: increments the number of customers served by a given value
+The method `apply_operation` interprets the operations specified in the form of `"[opname]:[arg]"`. Here are the detailed formats for each operation, explained through examples:
+- Prefix addition: `apply_operation("prefix:Hello, ")`
+- Suffix addition: `apply_operation("suffix: World!")`
+- Lowercase conversion: `apply_operation("lower:")`
+- Uppercase conversion: `apply_operation("upper:")`
+- Character replacement: `apply_operation("replace:a->e")`
 
-Ensure that the `name` and `cuisine_type` properties are properly encapsulated and that the `number_served` property is validated to only accept positive integers.
+The class should handle erroneous inputs gracefully, such as incorrect operation formats or arguments. Additionally, implement the `__str__` method to return a formatted string showing the current value of the string and a list of operations that have been applied to it.
 
 [Response]
 [Reasoning]
-To create a Python class `Restaurant` with the specified properties and methods, we can follow these steps:
+The goal is to create a Python class `StringEnhancer` capable of managing a string through various operations, using a central method `apply_operation`. The class also needs to handle errors gracefully and record the operation history. Here are the key steps to implement this class:
 
-1. Define the class `Restaurant` with the `__init__` method to initialize the properties `name`, `cuisine_type`, and `number_served` with the given values. The `name` and `cuisine_type` properties can be encapsulated by using the `@property` decorator and defining getters and setters for these properties.
-2. Define the `describe_restaurant` and `open_restaurant` methods to print the appropriate messages.
-3. Define the `set_number_served` and `increment_number_served` methods to set and increment the `number_served` property, respectively. Ensure that the `number_served` property is validated to only accept positive integers.
+- Initialize the class with an empty string and an empty list to store the operations.
+- Inside the `apply_operation` method:
+    - Parse the operation string to determine the operation type and argument (if any). 
+    - Gracefully handle any errors in the input format by printing an error message without actually raising an exception.
+    - Execute the correct string manipulation based on the operation.
+    - Append the operation to the records list.
+- Implement the `__str__` method by concatenating the current string value and the recorded operations.
 
 [Implementation]
-Here's how you can implement this class:
+Here's how you can implement the `StringEnhancer` class:
 
 ```python
-class Restaurant:
-    def __init__(self, name, cuisine_type):
-        self._name = name.title()
-        self._cuisine_type = cuisine_type
-        self._number_served = 0
+class StringEnhancer:
+    def __init__(self):
+        self.string = ""
+        self.operations = []
 
-    @property
-    def name(self):
-        return self._name
+    def apply_operation(self, operation: str):
+        parts = operation.split(":")
+        if len(parts) == 1:
+            print("Invalid operation format. Expected '[opname]:[arg]'")
+            return
 
-    @property
-    def cuisine_type(self):
-        return self._cuisine_type
+        opname, arg = parts[0], parts[1]
+        if opname == "prefix":
+            self.string = arg + self.string
+        elif opname == "suffix":
+            self.string += arg
+        elif opname == "lower":
+            self.string = self.string.lower()
+        elif opname == "upper":
+            self.string = self.string.upper()
+        elif opname == "replace":
+            if "->" not in arg:
+                print("Invalid replace operation format. Expected 'replace:a->b'")
+                return
+            old_char, new_char = arg.split("->")
+            self.string = self.string.replace(old_char, new_char)
+        else:
+            print(f"Unknown operation: {opname}")
 
-    @property
-    def number_served(self):
-        return self._number_served
+        self.operations.append(operation)
 
-    @number_served.setter
-    def number_served(self, value):
-        if not isinstance(value, int) or value < 0:
-            raise ValueError("number_served must be a positive integer")
-        self._number_served = value
-
-    def describe_restaurant(self):
-        msg = f"{self.name} tiene los mejores {self.cuisine_type}."
-        print(f"\n{msg}")
-
-    def open_restaurant(self):
-        msg = f"{self.name} Está Abierta. ¡Adelante! \n"
-        print(f"\n{msg}")
-
-    def set_number_served(self, number_served):
-        self.number_served = number_served
-
-    def increment_number_served(self, additional_served):
-        self.number_served += additional_served
+    def __str__(self):
+        return f"Current String: {self.string}\nOperations: {', '.join(self.operations)}"
 ```
 
-[Explanation]
-This class `Restaurant` encapsulates the `name` and `cuisine_type` properties using the `@property` decorator and defines getters and setters for these properties. The `number_served` property is also encapsulated and validated to only accept positive integers. The methods `describe_restaurant` and `open_restaurant` print the appropriate messages, while `set_number_served` and `increment_number_served` set and increment the `number_served` property, respectively.
-
 [Tests]
-To verify the correctness of this class, we can run the following tests:
+To test the class, you should apply different operations and check if the string and operation history are updated correctly:
 
 ```python
-restaurant = Restaurant("La Taquería", "comida mexicana")
-assert restaurant.name == "La Taquería"
-assert restaurant.cuisine_type == "comida mexicana"
-assert restaurant.number_served == 0
+enhancer = StringEnhancer()
+enhancer.apply_operation("prefix:Hello")
+enhancer.apply_operation("suffix:, World!")
+enhancer.apply_operation("lower:")
+enhancer.apply_operation("replace:o->a")
 
-restaurant.set_number_served(10)
-assert restaurant.number_served == 10
-
-restaurant.increment_number_served(5)
-assert restaurant.number_served == 15
-
-try:
-    restaurant.number_served = -1
-except ValueError:
-    pass
-else:
-    raise AssertionError("number_served should not accept negative values")
+expected_operation_history = ["prefix:Hello", "suffix:, World!", "lower:", "replace:o->a"]
+expected_operation_history_str = ', '.join(expected_operation_history)
+expected_str_value = "hella, warld!"
+assert enhancer.operations == expected_operation_history
+assert str(enhancer) == f"Current String: {expected_str_value}\nOperations: {expected_operation_history_str}"
 ```
 
 ### Example 16
