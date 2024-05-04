@@ -272,7 +272,7 @@ def get_ossinstruct_fewshots() -> Fewshot:
     # instruction_system_prompt = instruction_system_prompt.strip()
     # response_system_prompt = response_system_prompt.strip()
     examples_str = [example.strip() for example in splits[1:]]
-    assert len(examples_str) == 16, len(examples_str)
+    assert len(examples_str) == 21, len(examples_str)
     examples = list[Example]()
     for example_str in examples_str:
         pattern = (
