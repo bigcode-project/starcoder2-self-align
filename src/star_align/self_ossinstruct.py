@@ -252,7 +252,7 @@ def parse_property(content: str) -> Property | None:
         lines = [line[line.index(":") + 1 :].strip() for line in lines]
     except ValueError:
         return None
-    category, language, concepts_str, difficulty = lines
+    category, language, difficulty, concepts_str = lines
     concepts = list(map(str.strip, concepts_str.split(",")))
     return Property(category, language, concepts, difficulty)
 
