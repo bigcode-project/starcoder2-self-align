@@ -96,6 +96,7 @@ class Property:
         category = random.choice(
             [
                 "function implementation",
+                "function implementation",
                 "class implementation",
                 "program implementation",
             ]
@@ -114,9 +115,9 @@ class Property:
     def prompt(self) -> str:
         category = f"category: {self.category}"
         language = f"language: {self.language}"
-        concepts = f"concepts: {self.concepts_prompt()}"
         difficulty = f"difficulty: {self.difficulty}"
-        return "\n".join([category, language, concepts, difficulty])
+        concepts = f"concepts: {self.concepts_prompt()}"
+        return "\n".join([category, language, difficulty, concepts])
 
     def to_json(self) -> dict[str, str | list[str]]:
         return dict(
@@ -154,7 +155,7 @@ class Example:
         elif mode == "S->C":
             return "### Snippet\n{snippet}\n\n### Concepts\n"
         elif mode == "C->I":
-            return "### Property\n{property}\n\n### Instruction\n"
+            return "### Properties\n{property}\n\n### Task\n"
         else:
             assert False
 
@@ -168,7 +169,10 @@ class Example:
             kwargs = dict(snippet=self.snippet)
             suffix = self.property.concepts_prompt()
         elif mode == "C->I":
-            kwargs = dict(property=self.property.prompt())
+            property_prompt = self.property.prompt()
+            # num_words = len(self.instruction.split())
+            # property_prompt += f"\nnum_words: {num_words}"
+            kwargs = dict(property=property_prompt)
             suffix = self.instruction
         else:
             assert False
@@ -209,24 +213,27 @@ class Fewshot:
         assert (
             0 < num_fewshots <= len(valid_examples)
         ), f"{num_fewshots=}, {len(valid_examples)=}"
-        if mode == "C->I":
-            property = parse_property(format_args["property"])
-            assert property is not None
-            category = property.category
-            # Find one example with the same category
-            matching_example = next(
-                (
-                    example
-                    for example in valid_examples
-                    if example.property.category == category
-                ),
-                None,
-            )
-            assert matching_example is not None
-            examples = [matching_example] + random.sample(valid_examples, k=num_fewshots - 1)
-            random.shuffle(examples)
-        else:
-            examples = random.sample(valid_examples, k=num_fewshots)
+        # if mode == "C->I":
+            # # Hack
+            # property = cast(Property, format_args["property_obj"])
+            # category = property.category
+            # # Find one example with the same category
+            # matching_example = next(
+            #     (
+            #         example
+            #         for example in valid_examples
+            #         if example.property.category == category
+            #     ),
+            #     None,
+            # )
+            # assert matching_example is not None, f"{category=}"
+            # rest_of_examples = [example for example in valid_examples if example is not matching_example]
+            # assert len(rest_of_examples) == len(self.examples) - 1
+            # examples = [matching_example] + random.sample(rest_of_examples, k=num_fewshots - 1)
+            # random.shuffle(examples)
+        # else:
+        #     examples = random.sample(valid_examples, k=num_fewshots)
+        examples = random.sample(valid_examples, k=num_fewshots)
 
         body = "\n\n".join(
             f"## Example {idx + 1}\n{example.prompt(mode)}"
@@ -320,7 +327,13 @@ def build_kwargs(instruct_mode: InstructMode, example: dict) -> dict[str, str]:
         lang = example.get("data_dir", "dummy_key_not_in_example")
         language = LANGUAGE_MAP.get(lang, "Python")
         property = Property.random_exercise(example["concepts"], language=language)
-        kwargs["property"] = property.prompt()
+        property_prompt = property.prompt()
+        # 45 / 152 are the min/max word lengths in the fewshot examples
+        # num_words = random.randint(1000, 1500)
+        # property_prompt += f"\nnum_words: {num_words}"
+        kwargs["property"] = property_prompt
+        # Hack
+        kwargs["property_obj"] = property # type: ignore
     else:
         assert False
     return kwargs

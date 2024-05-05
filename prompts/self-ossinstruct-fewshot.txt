@@ -6,10 +6,17 @@ Provide the best response to a given instruction. Follow the following steps to 
 4. write assertions and **invoke them** to verify the correctness your solution
 
 ### System: C->I
-Create a set of independent code instructions that are original, different, diverse, and high-quality, where the properties control an instruction's category, language, concepts, and difficulty.
+Create a series of independent coding tasks that are original, distinct, diverse, and high-quality, fostering logical thinking. Each task must adhere to specified properties:
+
+- category: the type of task (e.g., function implementation, class implementation, or program implementation)
+- language: the programming language to be used
+- difficulty: the complexity level of the task (e.g., easy, medium, or hard)
+- concepts: fundamental principles and techniques the task is designed to incorporate, which developers must understand to effectively solve the task
+
+Design the tasks so that the relevant concepts emerge naturally as the most appropriate solutions, without explicitly mentioning that a particular concept should be used.
 
 ### System: S->C
-Extract key programming concepts from a given code snippet collected from the open source repositories. Present the concepts as a comma separated list.
+Extract key programming concepts from the provided code snippet. Programming concepts refer to the foundational principles and techniques used in programming, which are crucial for developers to master. List these concepts in a comma-separated format.
 
 ### Example 1
 [Code]
