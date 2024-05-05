@@ -147,11 +147,12 @@ class Example:
     snippet: str
     instruction: str
     response: str
+    tests: str
 
     @staticmethod
     def prefix_template(mode: InstructMode) -> str:
         if mode == "I->R":
-            return "### Instruction\n{instruction}\n\n### Response\n"
+            return "<instruction>\n{instruction}\n</instruction>\n\n<response>\n"
         elif mode == "S->C":
             return "### Snippet\n{snippet}\n\n### Concepts\n"
         elif mode == "C->I":
@@ -164,7 +165,7 @@ class Example:
     ) -> str | tuple[str, str]:
         if mode == "I->R":
             kwargs = dict(instruction=self.instruction)
-            suffix = self.response
+            suffix = f"{self.response}\n</response>\n\n<tests>\n{self.tests}\n</tests>"
         elif mode == "S->C":
             kwargs = dict(snippet=self.snippet)
             suffix = self.property.concepts_prompt()
@@ -213,27 +214,27 @@ class Fewshot:
         assert (
             0 < num_fewshots <= len(valid_examples)
         ), f"{num_fewshots=}, {len(valid_examples)=}"
-        # if mode == "C->I":
-            # # Hack
-            # property = cast(Property, format_args["property_obj"])
-            # category = property.category
-            # # Find one example with the same category
-            # matching_example = next(
-            #     (
-            #         example
-            #         for example in valid_examples
-            #         if example.property.category == category
-            #     ),
-            #     None,
-            # )
-            # assert matching_example is not None, f"{category=}"
-            # rest_of_examples = [example for example in valid_examples if example is not matching_example]
-            # assert len(rest_of_examples) == len(self.examples) - 1
-            # examples = [matching_example] + random.sample(rest_of_examples, k=num_fewshots - 1)
-            # random.shuffle(examples)
+        # if mode == "I->R":
+        #     # Hack
+        #     category = format_args["category"]
+        #     matching_examples = [
+        #         example
+        #         for example in valid_examples
+        #         if example.property.category == category
+        #     ]
+        #     assert len(matching_examples) > 0, f"{category=}"
+        #     matching_example = random.choice(matching_examples)
+        #     rest_of_examples = [
+        #         example for example in valid_examples if example is not matching_example
+        #     ]
+        #     assert len(rest_of_examples) == len(self.examples) - 1
+        #     examples = [matching_example] + random.sample(
+        #         rest_of_examples, k=num_fewshots - 1
+        #     )
+        #     random.shuffle(examples)
         # else:
-        #     examples = random.sample(valid_examples, k=num_fewshots)
         examples = random.sample(valid_examples, k=num_fewshots)
+        assert len(examples) == num_fewshots
 
         body = "\n\n".join(
             f"## Example {idx + 1}\n{example.prompt(mode)}"
@@ -283,9 +284,9 @@ def get_ossinstruct_fewshots() -> Fewshot:
     examples = list[Example]()
     for example_str in examples_str:
         pattern = (
-            r"\[Code\]\n|\[Property\]\n|\[Instruction\]\n|\[Response\]\n"
+            r"\[Code\]\n|\[Property\]\n|\[Instruction\]\n|\[Response\]\n|\[Tests\]\n"
         )
-        _, snippet, property, instruction, response = re.split(
+        _, snippet, property, instruction, response, tests = re.split(
             pattern, example_str
         )
         snippet = snippet.rstrip()
@@ -293,7 +294,8 @@ def get_ossinstruct_fewshots() -> Fewshot:
         assert property is not None
         instruction = instruction.strip()
         response = response.strip()
-        example = Example(property, snippet, instruction, response)
+        tests = tests.strip()
+        example = Example(property, snippet, instruction, response, tests)
         examples.append(example)
     # if args.external_data is not None:
     #     examples.extend(external_examples)
@@ -321,6 +323,11 @@ def build_kwargs(instruct_mode: InstructMode, example: dict) -> dict[str, str]:
     kwargs = dict[str, str]()
     if instruct_mode == "I->R":
         kwargs["instruction"] = example["instruction"]
+        # Hack
+        category_index = example["prompt"].rindex("category: ") + len("category: ")
+        category_end = example["prompt"].index("\n", category_index)
+        category = example["prompt"][category_index:category_end].strip()
+        kwargs["category"] = category  # type: ignore
     elif instruct_mode == "S->C":
         kwargs["snippet"] = example["seed"]
     elif instruct_mode == "C->I":
@@ -333,7 +340,7 @@ def build_kwargs(instruct_mode: InstructMode, example: dict) -> dict[str, str]:
         # property_prompt += f"\nnum_words: {num_words}"
         kwargs["property"] = property_prompt
         # Hack
-        kwargs["property_obj"] = property # type: ignore
+        kwargs["property_obj"] = property  # type: ignore
     else:
         assert False
     return kwargs
@@ -483,6 +490,8 @@ async def main():
             )
             params["prompt"] = prompt
             params["stop"] = ["## Example"]
+            if args.instruct_mode == "I->R":
+                params["stop"].append("</tests>")
             request_params.append(params)
         assert len(request_params) == len(examples)
         print(f"Ready to make {len(request_params)} requests")
@@ -494,12 +503,15 @@ async def main():
             )
             responses = await dispatch_requests(request_params, delay=args.delay)
         else:
+            stop = ["## Example"]
+            if args.instruct_mode == "I->R":
+                stop.append("</tests>")
             sampling_params = SamplingParams(
                 temperature=args.temperature,
                 max_tokens=args.max_output_tokens,
                 seed=args.seed + effective_index,
                 n=args.num_sample_per_request,
-                stop=["## Example"],
+                stop=stop,
             )
             vllm_responses = engine.generate(all_prompts, sampling_params)
             responses = list(map(vllm_response_to_openai, vllm_responses))

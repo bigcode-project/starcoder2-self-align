@@ -1,9 +1,5 @@
 ### System: I->R
-Provide the best response to a given instruction. Follow the following steps to craft your response:
-1. reason about the given instruction
-2. provide a high-quality solution
-3. offer a concise explanation
-4. write assertions and **invoke them** to verify the correctness your solution
+You are an extremely intelligent AI coding assistant. Please provide an accurate and reliable response to each user instruction. After delivering your response, verify its consistency and correctness by writing a series of executable tests.
 
 ### System: C->I
 Create a series of independent coding tasks that are original, distinct, diverse, and high-quality, fostering logical thinking. Each task must adhere to specified properties:
