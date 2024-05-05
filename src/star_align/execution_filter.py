@@ -1,24 +1,33 @@
 import ast
 import json
 import os
-import re
 import shutil
 import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import Process, cpu_count
-
 from evalplus.eval.utils import (
     create_tempdir,
     reliability_guard,
     swallow_io,
     time_limit,
 )
-from fire import Fire
 from tqdm.auto import tqdm
 
-from star_align.utils import chunked
+from datasets import load_dataset
+from star_align.utils import chunked, find_code_blocks, retry, write_jsonl
+from transformers import HfArgumentParser
+from dataclasses import dataclass, field
+from typing import cast
 
-# dependencies: evalplus fire tqdm
+
+@dataclass(frozen=True)
+class Args:
+    response_paths: list[str]
+    result_path: str
+    cache_paths: list[str] = field(default_factory=list)
+    max_batched_tasks: int = 10000
+    max_workers: int = cpu_count()
+    container_server: str | None = None
 
 
 def suppress_output(func):
@@ -66,23 +75,23 @@ def _run(code) -> None:
         os.getcwd = getcwd
 
 
-# from code_exec_server.code_exec_reqs import exec_test
 def containerized_run(item):
-    from code_exec_server.code_exec_reqs import exec_test
+    from star_align.code_exec_server.code_exec_reqs import exec_test
 
     idx, result, code, srv = item
-    passed, _ = exec_test(srv, code, "", timeout=10)
-    return (idx, result) if passed else None
+    passed, output = exec_test(srv, code, "", timeout=10)
+    return (idx, result, code, passed, output)
 
 
 def fork_run(item):
-    idx, result, code, _ = item
+    idx, response, code, _ = item
     sys.stdout = open(os.devnull, "w")
     sys.stderr = sys.stdout
     p = Process(target=_run, args=(code,))
     p.start()
     p.join(timeout=10)
-    return (idx, result) if p.exitcode == 0 else None
+    passed = p.exitcode == 0
+    return (idx, response, code, passed, "NOT SUPPORTED")
 
 
 def is_compilable(code):
@@ -93,114 +102,147 @@ def is_compilable(code):
         return False
 
 
-def extract_code(response):
-    pattern = r"^```python\s*\n(.*?)(?=^```)"
-    result = re.findall(pattern, response, re.DOTALL | re.MULTILINE)
-    return "\n".join([x for x in result if is_compilable(x)])
+def extract_code(response: str) -> str:
+    def sanitize_codeblock(code: str) -> str:
+        if "input" not in code:
+            return code.strip()
+        # Only remove the `if __name__..` when `input` is present because
+        # it will block the code execution.
+        key = 'if __name__ == "__main__":'
+        key_alt = "if __name__ == '__main__':"
+        index = code.find(key)
+        if index == -1:
+            index = code.find(key_alt)
+        if index == -1:
+            return code.strip()
+        assert index != -1
+        code = code[:index].strip()
+        return code
+
+    code_blocks = list(map(sanitize_codeblock, find_code_blocks(response)))
+    return "\n\n".join(code_blocks)
 
 
-# /scratch/sc2-instruct/data-ossx-del2-fewshot-mpt-response-temp0-s_i-1shot-temp0-i_r-8754b-0-20240321_172151.jsonl
-def main(
-    response_path: str,
-    result_path: str,
-    # NOTE: the higher the faster, but less reliable. 5000 is a good default.
-    max_batched_tasks: int = cpu_count(),
-    max_workers: int = cpu_count(),
-    cache_path: str | None = None,
-    container_server=None,
-):
-    # load jsonl
-    with open(response_path, "r") as f:
-        raw_data = [json.loads(line) for line in f if line.strip()]
-    if cache_path is not None:
-        with open(cache_path, "r") as f:
-            cached_data = [json.loads(line) for line in f if line.strip()]
-        # instruction -> set[response]
-        hit_code = set[str]()
-        for item in tqdm(cached_data):
-            code = extract_code(item["response"])
-            hit_code.add(code)
+def form_new_data(
+    item: dict,
+    response: str,
+    extracted_code: str,
+    pass_execution: bool,
+    output: str,
+) -> dict:
+    newdata = {k: v for k, v in item.items() if k not in ["response", "parsing_result"]}
+    newdata["response"] = response
+    newdata["extracted_code"] = extracted_code
+    newdata["pass"] = pass_execution
+    newdata["output"] = output
+    return newdata
 
-    uncompilable = 0
-    all_tasks = []
 
-    print("Container server:", container_server)
+def main():
+    args = cast(Args, HfArgumentParser(Args).parse_args_into_dataclasses()[0])
+    if args.container_server is None:
+        option = input(
+            "WARNING: container_server is not set. You will run the code locally, which can lead to unexpected side effects. Continue? (y/n): "
+        ).strip()
+        if option.lower() != "y":
+            return
 
-    for idx, item in enumerate(tqdm(raw_data)):
+    if os.path.exists(args.result_path):
+        option = input(
+            f"WARNING: {args.result_path} already exists. Overwrite? (y/n): "
+        ).strip()
+        if option.lower() != "y":
+            return
+
+    raw_data = load_dataset("json", data_files=args.response_paths, split="train")
+    if len(args.cache_paths) > 0:
+        cached_data = load_dataset("json", data_files=args.cache_paths, split="train")
+        cached_dict: dict[str, dict] = {
+            item["extracted_code"]: item for item in cached_data
+        }
+    else:
+        cached_dict = {}
+
+    all_tasks: list[tuple[int, str, str, str | None]] = []
+    eval_results: list[dict] = []
+    for idx, item in enumerate(tqdm(raw_data, desc="Preprocessing: extracting code")):
         # passing_results = []
         if "parsing_result" not in item:
-            code = extract_code(item["response"])
-            if not code:
-                uncompilable += 1
-                continue
-            all_tasks.append((idx, item, code, container_server))
-        else:
-            for result in item["parsing_result"]:
-                code = extract_code(result["response"])
-                if not code:
-                    uncompilable += 1
-                    continue
-                all_tasks.append((idx, result, code, container_server))
-                # passing_results.append((result, code))
+            item["parsing_result"] = [dict(response=item["response"])]
+        for result in item["parsing_result"]:
+            response = result["response"]
+            code = extract_code(response)
+            if (hit_item := cached_dict.get(code, None)) is not None:
+                assert code == hit_item["extracted_code"]
+                new_data = form_new_data(
+                    item=item,
+                    response=response,
+                    extracted_code=code,
+                    pass_execution=hit_item["pass"],
+                    output=hit_item["output"],
+                )
+                eval_results.append(new_data)
+            else:
+                all_tasks.append((idx, response, code, args.container_server))
 
-    # Split cached/un-cached data
-    active_tasks = []
-    cached_tasks = []
-    for task in tqdm(all_tasks, desc="Preprocessing: flattening tasks"):
-        _, _, code, _ = task
-        if cache_path is not None and code in hit_code:
-            cached_tasks.append(task)
-        else:
-            active_tasks.append(task)
+    def pass_rate_str(passed: int, total: int, tag: str = "") -> str:
+        percentage = f"{passed/total * 100:.2f}%" if total > 0 else "N/A"
+        ratio = f"{passed}/{total}"
+        tag = f"{tag} " if len(tag) > 0 else ""
+        return f"{tag}Passed: {ratio} ({percentage})"
 
-    with open(result_path, "w") as f:
-        for idx, result, _, _ in cached_tasks:
-            newdata = {
-                k: v
-                for k, v in raw_data[idx].items()
-                if k not in ["response", "parsing_result"]
-            }
-            newdata["response"] = result["response"]
-            f.write(json.dumps(newdata) + "\n")
+    n_cached_passed = sum(item["pass"] for item in eval_results)
+    n_cached_total = len(eval_results)
 
-    print(f"Active tasks: {len(active_tasks)}")
-    print(f"Cached tasks: {len(cached_tasks)}")
+    print(f"Cached: {len(eval_results)}, Active: {len(all_tasks)}")
+    print(pass_rate_str(n_cached_passed, n_cached_total, "Cached"))
 
-    run_func = containerized_run if container_server else fork_run
-
-    nfails = 0
-    tasks_chunks = chunked(active_tasks, max_batched_tasks)
-    with open(result_path, "a") as f:
-        with ProcessPoolExecutor(max_workers=max_workers) as executor:
-            for chunked_tasks in tqdm(tasks_chunks):
+    run_func = containerized_run if args.container_server else fork_run
+    tasks_chunks = list(chunked(all_tasks, args.max_batched_tasks))
+    n_processed = 0
+    n_passed = 0
+    with open(args.result_path, "w") as f:
+        for cached_result in eval_results:
+            f.write(json.dumps(cached_result) + "\n")
+        with ProcessPoolExecutor(max_workers=args.max_workers) as executor:
+            pbar = tqdm(tasks_chunks)
+            for chunked_tasks in pbar:
                 futures = [executor.submit(run_func, task) for task in chunked_tasks]
                 # NOTE: futures do not return in the same order as before
-                for future in tqdm(as_completed(futures), total=len(futures), leave=False):
+                pbar_inner = tqdm(
+                    as_completed(futures),
+                    total=len(futures),
+                    leave=False,
+                )
+                n_passed_inner = 0
+                for n_processed_inner, future in enumerate(pbar_inner, start=1):
+                    n_processed += 1
                     try:
                         future_result = future.result()
-                        if future_result is None:
-                            nfails += 1
-                            continue
-                        idx, result = future_result
-                        newdata = {
-                            k: v
-                            for k, v in raw_data[idx].items()
-                            if k not in ["response", "parsing_result"]
-                        }
-                        newdata["response"] = result["response"]
-                        f.write(json.dumps(newdata) + "\n")
-                    except Exception:
-                        nfails += 1
+                    except Exception as e:
                         continue
-                # if passed_indices:
-                #     item = data[idx]
-                #     item["parsing_result"] = [presults[i] for i in passed_indices]
-                #     f.write(json.dumps(item) + "\n")
+                    idx, response, code, passed, output = future_result
+                    if output == "Failed to execute program":
+                        continue
+                    newdata = form_new_data(
+                        item=raw_data[idx],
+                        response=response,
+                        extracted_code=code,
+                        pass_execution=passed,
+                        output=output,
+                    )
+                    f.write(json.dumps(newdata) + "\n")
+                    n_passed += passed
+                    n_passed_inner += passed
+                    pbar_inner.set_description(
+                        pass_rate_str(n_passed_inner, n_processed_inner)
+                    )
+                pbar.set_description(pass_rate_str(n_passed, n_processed))
 
-    print(f"Uncompilable: {uncompilable}")
-    print(f"Failed: {nfails}")
+    n_total_passed = n_cached_passed + n_passed
+    n_total = len(all_tasks) + n_cached_total
+    print(pass_rate_str(n_total_passed, n_total, "Total"))
 
 
 if __name__ == "__main__":
-    print("Try to run this file using docker if possible!")
-    Fire(main)
+    main()
