@@ -87,6 +87,8 @@ By default, we use in-memory vLLM engine for data generation, but we also provid
 
 Set `CUDA_VISIBLE_DEVICES=...` to specify the GPU devices to use for the vLLM engine.
 
+To maximize data generation efficiency, we recommend invoking the script multiple times with different `seed_code_start_index` and `max_new_data` values, each with an vLLM engine running on a separate GPU set. For example, for a 100k seed dataset on a 2-GPU machine, you can have 2 processes each generating 50k samples by setting `CUDA_VISIBLE_DEVICES=0 --seed_code_start_index 0 --max_new_data 50000` and `CUDA_VISIBLE_DEVICES=1 --seed_code_start_index 50000 --max_new_data 50000`.
+
 <details>
 
 <summary>Click to see how to run with vLLM's OpenAI compatible API</summary>
