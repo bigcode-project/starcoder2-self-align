@@ -241,7 +241,7 @@ Also, the container connection may be lost during execution. In this case, you c
 ```shell
 python src/star_align/sanitize_data.py \
     --data_files /path/to/filtered.jsonl* \
-    --output_file data-all-passing.jsonl \
+    --output_file /path/to/final_dataset.jsonl \
     --parse_raw_response True \
     --passing_only True \
     --exact_match_dedup True \
