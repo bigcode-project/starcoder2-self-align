@@ -76,7 +76,7 @@ def preprocess_and_filter(x: dict) -> dict:
     """Filter out responses with wrong format"""
 
     def wrong_format(x: dict) -> dict:
-        return {k: v for k, v in x.items()} | dict(wrong_format=True)
+        return {k: v for k, v in x.items()} | dict(wrong_format=True, tests="<NO>")
 
     response: str = x["response"]
     if RESPONSE_TEST_SPLIT not in response:
@@ -104,7 +104,7 @@ def preprocess_and_filter(x: dict) -> dict:
         return wrong_format(x)
 
     newx = {k: v for k, v in x.items() if k != "response"} | dict(
-        response=response, tests=tests
+        response=response, tests=tests, wrong_format=False
     )
     return newx
 
