@@ -83,7 +83,15 @@ print(respond(instruction, response_prefix))
 
 > Run `pip install -e .` first to install the package locally. Check [seed_gathering](seed_gathering/) for details on how we collected the seeds.
 
-We used vLLM's [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) for data generation. So, before running the following commands, make sure the vLLM server is running, and the associated `openai` environment variables are set.
+By default, we use in-memory vLLM engine for data generation, but we also provide an option to use vLLM's [OpenAI compatible server](https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html) for data generation.
+
+Set `CUDA_VISIBLE_DEVICES=...` to specify the GPU devices to use for the vLLM engine.
+
+<details>
+
+<summary>Click to see how to run with vLLM's OpenAI compatible API</summary>
+
+To do so, make sure the vLLM server is running, and the associated `openai` environment variables are set.
 
 For example, you can start an vLLM server with `docker`:
 
@@ -104,21 +112,28 @@ export OPENAI_API_KEY="EMPTY"
 export OPENAI_BASE_URL="http://localhost:10000/v1/"
 ```
 
+You will also need to set `--use_vllm_server True` in the following commands.
+
+</details>
+
 <details>
 
 <summary>Snippet to concepts generation</summary>
 
 ```shell
+MODEL=bigcode/starcoder2-15b
+MAX_NEW_DATA=1000000
 python src/star_align/self_ossinstruct.py \
+    --use_vllm_server False \
     --instruct_mode "S->C" \
     --seed_data_files /path/to/seeds.jsonl \
-    --max_new_data 50000 \
+    --max_new_data $MAX_NEW_DATA \
     --tag concept_gen \
     --temperature 0.7 \
     --seed_code_start_index 0 \
-    --model bigcode/starcoder2-15b \
+    --model $MODEL \
     --num_fewshots 8 \
-    --num_batched_requests 32 \
+    --num_batched_requests 2000 \
     --num_sample_per_request 1
 ```
 
@@ -129,17 +144,19 @@ python src/star_align/self_ossinstruct.py \
 <summary>Concepts to instruction generation</summary>
 
 ```shell
+MODEL=bigcode/starcoder2-15b
+MAX_NEW_DATA=1000000
 python src/star_align/self_ossinstruct.py \
     --instruct_mode "C->I" \
     --seed_data_files /path/to/concepts.jsonl \
-    --max_new_data 50000 \
+    --max_new_data $MAX_NEW_DATA \
     --tag instruction_gen \
     --temperature 0.7 \
     --seed_code_start_index 0 \
-    --model bigcode/starcoder2-15b \
+    --model $MODEL \
     --num_fewshots 8 \
     --num_sample_per_request 1 \
-    --num_batched_request 32
+    --num_batched_request 2000
 ```
 
 </details>
@@ -149,15 +166,17 @@ python src/star_align/self_ossinstruct.py \
 <summary>Instruction to response (with self-validation code) generation</summary>
 
 ```shell
+MODEL=bigcode/starcoder2-15b
+MAX_NEW_DATA=1000000
 python src/star_align/self_ossinstruct.py \
     --instruct_mode "I->R" \
     --seed_data_files path/to/instructions.jsonl  \
-    --max_new_data 50000 \
+    --max_new_data $MAX_NEW_DATA \
     --tag response_gen \
     --seed_code_start_index 0 \
-    --model bigcode/starcoder2-15b \
+    --model $MODEL \
     --num_fewshots 1 \
-    --num_batched_request 8 \
+    --num_batched_request 500 \
     --num_sample_per_request 10 \
     --temperature 0.7
 ```
@@ -168,23 +187,48 @@ python src/star_align/self_ossinstruct.py \
 
 <summary>Execution filter</summary>
 
-> **Warning:** Though we implemented reliability guards, it is highly recommended to run execution in a sandbox environment. The command below doesn't provide sandboxing by default.
-
+> **Warning:** Though we implemented reliability guards, it is highly recommended to run execution in a sandbox environment we provided.
+<!-- 
 ```shell
 python src/star_align/execution_filter.py --response_path /path/to/response.jsonl --result_path /path/to/filtered.jsonl
 # The current implementation may cause deadlock.
 # If you encounter deadlock, manually do `ps -ef | grep execution_filter` and kill the stuck process.
 # Note that filtered.jsonl may contain multiple passing samples for the same instruction which needs further selection.
-```
+``` -->
 
-For using the the Docker container for executing code, you will first need to `git submodule update --init --recursive` to clone the server, then run:
+To use the Docker container for executing code, you will first need to `git submodule update --init --recursive` to clone the server, then run:
 
 ```shell
 pushd ./src/star_align/code_exec_server
 ./pull_and_run.sh
 popd
-python src/star_align/execution_filter.py --response_path /path/to/response.jsonl --result_path /path/to/filtered.jsonl --container_server http://127.0.0.1:8000
+python src/star_align/execution_filter.py \
+    --response_paths /path/to/response.jsonl \
+    --result_path /path/to/filtered.jsonl \
+    --max_batched_tasks 10000 \
+    --container_server http://127.0.0.1:8000
 ```
+
+Execution filter will produce a flattened list of JSONL entries with a `pass` field indicating whether the execution passed or not. **It also incrementally dumps the results and can load a cached partial data file.** You can recover an execution with:
+
+```shell
+python src/star_align/execution_filter.py \
+    --response_paths /path/to/response.jsonl* \
+    --cache_paths /path/to/filtered.jsonl* \
+    --result_path /path/to/filtered-1.jsonl \
+    --max_batched_tasks 10000 \
+    --container_server http://127.0.0.1:8000
+```
+
+Note that sometimes execution can lead to significant slowdowns due to excessive resource consumption. To alleviate this, you can limit the docker's cpu usage (e.g., `docker run --cpuset-cpus="0-31"`). You can also do:
+
+```shell
+# For example, you can set the command to be `sudo pkill -f '/tmp/codeexec'`
+export CLEANUP_COMMAND="the command to execute after each batch"
+python src/star_align/execution_filter.py...
+```
+
+Also, the container connection may be lost during execution. In this case, you can just leverage the caching mechanism described above to re-run the script.
 
 </details>
 
@@ -193,9 +237,13 @@ python src/star_align/execution_filter.py --response_path /path/to/response.json
 <summary>Data sanitization and selection</summary>
 
 ```shell
-RAW=1 python src/star_align/sanitize_data.py /path/to/filtered.jsonl /path/to/sanitized.jsonl
-python src/star_align/clean_data.py --data_files /path/to/sanitized.jsonl --output_file /path/to/sanitized.jsonl --diversify_func_names
-SMART=1 python src/star_align/sanitize_data.py /path/to/sanitized.jsonl /path/to/sanitized.jsonl
+python src/star_align/sanitize_data.py \
+    --data_files /path/to/filtered.jsonl* \
+    --output_file data-all-passing.jsonl \
+    --parse_raw_response True \
+    --passing_only True \
+    --exact_match_dedup True \
+    --data_augmentation False
 ```
 
 </details>
