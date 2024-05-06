@@ -227,6 +227,8 @@ The following script finetunes StarCoder2-15B-Instruct-v0.1 from the base StarCo
 
 <summary>Click to see the training script</summary>
 
+NOTE: StarCoder2-15B sets dropout values to 0.1 by default. We did not apply dropout in finetuning and thus set the them to 0.0.
+
 ```shell
 MODEL_KEY=bigcode/starcoder2-15b
 LR=1e-5
@@ -255,7 +257,10 @@ accelerate launch -m star_align.train \
     --max_grad_norm -1 \
     --warmup_ratio $WARMUP_RATIO \
     --learning_rate $LR \
-    --lr_scheduler_type linear
+    --lr_scheduler_type linear \
+    --attention_dropout 0.0 \
+    --residual_dropout 0.0 \
+    --embedding_dropout 0.0
 ```
 
 </details>
