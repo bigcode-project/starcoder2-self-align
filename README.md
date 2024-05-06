@@ -181,7 +181,7 @@ For using the the Docker container for executing code, you will first need to `g
 
 ```shell
 pushd ./src/star_align/code_exec_server
-./build_and_run.sh
+./pull_and_run.sh
 popd
 python src/star_align/execution_filter.py --response_path /path/to/response.jsonl --result_path /path/to/filtered.jsonl --container_server http://127.0.0.1:8000
 ```
