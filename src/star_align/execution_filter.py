@@ -14,7 +14,7 @@ from evalplus.eval.utils import (
 from tqdm.auto import tqdm
 
 from datasets import load_dataset
-from star_align.utils import chunked, find_code_blocks, retry, write_jsonl
+from star_align.utils import chunked, find_code_blocks
 from transformers import HfArgumentParser
 from dataclasses import dataclass, field
 from typing import cast
@@ -154,6 +154,11 @@ def main():
         if option.lower() != "y":
             return
 
+    cleanup_command = os.getenv("CLEANUP_COMMAND", None)
+    if cleanup_command is not None:
+        print(f"NOTE: the cleanup command is set to:")
+        print(cleanup_command)
+
     raw_data = load_dataset("json", data_files=args.response_paths, split="train")
     if len(args.cache_paths) > 0:
         cached_data = load_dataset("json", data_files=args.cache_paths, split="train")
@@ -238,6 +243,10 @@ def main():
                         pass_rate_str(n_passed_inner, n_processed_inner)
                     )
                 pbar.set_description(pass_rate_str(n_passed, n_processed))
+                if cleanup_command is not None:
+                    print(f"Cleaning up: {cleanup_command}")
+                    os.system(cleanup_command)
+                    print("Cleanup done.")
 
     n_total_passed = n_cached_passed + n_passed
     n_total = len(all_tasks) + n_cached_total
