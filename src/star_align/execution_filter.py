@@ -20,6 +20,28 @@ from dataclasses import dataclass, field
 from typing import cast
 
 
+_magic_splitter_ = "### -- what do you think? -- ###"
+
+
+def make_python_membound_code_prefix(limit_mb):
+    maximum_memory_bytes = limit_mb * 1024 * 1024
+    return f"""\
+import resource
+
+resource.setrlimit(
+    resource.RLIMIT_AS, ({maximum_memory_bytes}, {maximum_memory_bytes})
+)
+resource.setrlimit(
+    resource.RLIMIT_DATA, ({maximum_memory_bytes}, {maximum_memory_bytes})
+)
+if not platform.uname().system == "Darwin":
+    resource.setrlimit(
+        resource.RLIMIT_STACK, ({maximum_memory_bytes}, {maximum_memory_bytes})
+    )
+{_magic_splitter_}
+"""
+
+
 @dataclass(frozen=True)
 class Args:
     response_paths: list[str]
@@ -75,11 +97,12 @@ def _run(code) -> None:
         os.getcwd = getcwd
 
 
-def containerized_run(item):
+def containerized_run(item, limit_mb=4 * 1024):
     from star_align.code_exec_server.code_exec_reqs import exec_test
 
     idx, result, code, srv = item
-    passed, output = exec_test(srv, code, "", timeout=10)
+    membound_code = make_python_membound_code_prefix(limit_mb) + code
+    passed, output = exec_test(srv, membound_code, "", timeout=10)
     return (idx, result, code, passed, output)
 
 
