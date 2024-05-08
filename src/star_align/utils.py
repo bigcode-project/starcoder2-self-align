@@ -192,56 +192,6 @@ def find_codeblock_indices(
     return all_indices
 
 
-def remove_comments_from_code_blocks(
-    content: str,
-) -> str:
-    code_blocks = find_codeblock_indices(content)
-    # Current index in the original content for tracking purposes
-    current_index = 0
-    # Buffer to store the new content
-    new_content: list[str] = []
-    # Iterate over each code block
-    for start, end in code_blocks:
-        # Append the content before this code block
-        new_content.append(content[current_index:start])
-
-        # Extract the code block content
-        code_block_content = content[start:end]
-
-        # Split into lines, process, and rejoin
-        lines = code_block_content.splitlines(keepends=True)
-        kept_lines = list[str]()
-
-        i = 0
-        while i < len(lines):
-            if (
-                i != 0
-                and i + 1 < len(lines)
-                and lines[i].strip() == ""
-                and lines[i + 1].lstrip().startswith("#")
-            ):
-                i += 2
-                continue
-            if lines[i].lstrip().startswith("#"):
-                i += 1
-                continue
-            kept_lines.append(lines[i])
-            i += 1
-
-        # Join the processed lines and add to the modified blocks list
-        modified_block_content = "".join(kept_lines)
-        new_content.append(modified_block_content)
-
-        # Update current index
-        current_index = end
-
-    # Add the remaining part of the original content after the last code block
-    new_content.append(content[current_index:])
-
-    # Join all parts to form the final modified content
-    return "".join(new_content)
-
-
 def infer_prompt_template(tokenizer_name: str) -> str:
     from transformers import AutoTokenizer
 
