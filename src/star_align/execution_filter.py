@@ -27,6 +27,7 @@ def make_python_membound_code_prefix(limit_mb):
     maximum_memory_bytes = limit_mb * 1024 * 1024
     return f"""\
 import resource
+import platform
 
 resource.setrlimit(
     resource.RLIMIT_AS, ({maximum_memory_bytes}, {maximum_memory_bytes})
