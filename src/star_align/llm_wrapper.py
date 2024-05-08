@@ -330,6 +330,7 @@ class ModelContext:
             decoded_outputs=output_strings,
         )
 
+
 class SupportedModelKeys(Enum):
     # StarCoder-based models
     STARCODER_15B = "bigcode/starcoder"

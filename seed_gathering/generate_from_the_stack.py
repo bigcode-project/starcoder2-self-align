@@ -1,11 +1,12 @@
-from tree_sitter_parser import LANGUAGE, make_parser, node_to_string
-import datasets
 import os
 import signal
 from multiprocessing import Pool
 
+import datasets
+from tree_sitter_parser import LANGUAGE, make_parser, node_to_string
 
-TOPLEVEL_DOCSTRING_QUERY = LANGUAGE.query("""
+TOPLEVEL_DOCSTRING_QUERY = LANGUAGE.query(
+    """
 (
     (function_definition
       name: (identifier)
@@ -18,7 +19,8 @@ TOPLEVEL_DOCSTRING_QUERY = LANGUAGE.query("""
     (#eq? @docstring.start "\\\"\\\"\\\"")
     (#eq? @docstring.end "\\\"\\\"\\\"")
 )
-""")
+"""
+)
 
 
 def get_fns_with_docstrings(src, tree):
@@ -87,16 +89,22 @@ def main(args):
                 print(f"Processing chunk {i // CHUNK_SIZE}")
                 # divide the chunk into NUM_WORKERS chunks
                 subchunk_size = len(chunk) // args.num_workers
-                subchunks = [chunk[i:i + subchunk_size]
-                             for i in range(0, len(chunk), subchunk_size)]
+                subchunks = [
+                    chunk[i : i + subchunk_size]
+                    for i in range(0, len(chunk), subchunk_size)
+                ]
                 new_funs_iter = p.imap(
-                    process_chunk, [(i, subchunk) for i, subchunk in enumerate(subchunks)])
+                    process_chunk,
+                    [(i, subchunk) for i, subchunk in enumerate(subchunks)],
+                )
                 print("Getting new functions")
                 len_before = len(funs)
                 while True:
                     try:
+
                         def timeout_handler(_, __):
                             raise KeyboardInterrupt  # it's fineeeeeee
+
                         signal.signal(signal.SIGALRM, timeout_handler)
                         signal.alarm(60)
                         funs.update(next(new_funs_iter))
@@ -117,7 +125,8 @@ def main(args):
                 PARSERS = [make_parser() for _ in range(args.num_workers)]
 
                 print(
-                    f"Done processing chunk {i // CHUNK_SIZE}. Got {len(funs) - len_before} new functions")
+                    f"Done processing chunk {i // CHUNK_SIZE}. Got {len(funs) - len_before} new functions"
+                )
 
                 chunk = []
         except Exception as e:
@@ -129,10 +138,7 @@ def main(args):
 
     p.close()
 
-    new_ds_dict = {
-        "content": list(funs),
-        "id": list(range(len(funs)))
-    }
+    new_ds_dict = {"content": list(funs), "id": list(range(len(funs)))}
 
     new_ds = datasets.Dataset.from_dict(new_ds_dict)
     new_ds.push_to_hub(args.push, private=True)
@@ -140,10 +146,10 @@ def main(args):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_workers", type=int, default=os.cpu_count())
-    parser.add_argument("--dataset", type=str,
-                        default="bigcode/the-stack-dedup")
+    parser.add_argument("--dataset", type=str, default="bigcode/the-stack-dedup")
     parser.add_argument("--data_dir", type=str, default="data/python")
     parser.add_argument("--push", type=str, required=True)
     args = parser.parse_args()

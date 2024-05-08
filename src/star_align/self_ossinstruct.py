@@ -249,9 +249,7 @@ def get_ossinstruct_fewshots() -> Fewshot:
     system_prompt = splits[0].strip()
     # "I->R", "E->S", "I->I", "PI->PI", "S->C"
     sys_pattern = r"### System: I->R|### System: C->I|### System: S->C"
-    _, i_r, c_i, s_c = list(
-        map(str.strip, re.split(sys_pattern, system_prompt))
-    )
+    _, i_r, c_i, s_c = list(map(str.strip, re.split(sys_pattern, system_prompt)))
     # system_prompt = re.split(r"### System: Instruction", system_prompt)[1]
     # instruction_system_prompt, response_system_prompt = system_prompt.split(
     #     "### System: Response"

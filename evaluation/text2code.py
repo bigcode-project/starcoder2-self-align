@@ -2,6 +2,7 @@ import itertools
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, TypedDict, cast
+
 from evalplus.data import get_human_eval_plus, get_mbpp_plus, write_jsonl
 from tqdm.auto import tqdm
 from transformers import HfArgumentParser
@@ -9,6 +10,7 @@ from transformers import HfArgumentParser
 from star_align.llm_wrapper import GenerationConfig, get_model_context
 from star_align.prompt_template import SC2_INSTRUCT_PROMPT as PROMPT_TEMPLATE
 from star_align.utils import chunked
+
 
 class Text2CodeProblem(TypedDict):
     id: str
@@ -24,6 +26,7 @@ def get_mbpp_raw_problems() -> list[dict]:
 def get_humaneval_raw_problems() -> list[dict]:
     problems = get_human_eval_plus()
     return list(problems.values())
+
 
 def map_mbpp_problem(p: dict) -> Text2CodeProblem:
     id = p["task_id"]

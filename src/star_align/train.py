@@ -13,7 +13,8 @@ from star_align.llm_wrapper import (
     get_model_context,
     pad_sequences,
 )
-from star_align.prompt_template import CHAT_TEMPLATE, SC2_INSTRUCT_PROMPT as PROMPT_TEMPLATE
+from star_align.prompt_template import CHAT_TEMPLATE
+from star_align.prompt_template import SC2_INSTRUCT_PROMPT as PROMPT_TEMPLATE
 from star_align.utils import N_CORES
 
 
@@ -28,6 +29,7 @@ class ModelArguments:
 
 # Ignored index in CrossEntropyLoss
 IGNORED_INDEX = -100
+
 
 def map_dataset(
     examples: dict[str, list[str]],
