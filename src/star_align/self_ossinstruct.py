@@ -261,7 +261,7 @@ class Fewshot:
         assert len(examples) == num_fewshots
 
         body = "\n\n".join(
-            f"## Example {idx + 1}\n{example.prompt(mode, index=idx + 1)}"
+            f"## Example {idx + 1}\n{example.prompt(mode, index=idx + 1 if LLAMA3 and mode == 'I->R' else None)}"
             for idx, example in enumerate(examples)
         )
         # content = f"{self.system_prompt}\n\n{body}"
