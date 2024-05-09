@@ -308,7 +308,7 @@ def main():
     )
 
     # Loading
-    data_files_list = args.data_files.split(",")
+    data_files_list = [x.strip() for x in args.data_files.split(",")]
     ds = datasets.load_dataset("json", data_files=data_files_list, split="train")
     ds = ds.map(lambda x, i: {INDEX_COLUMN: i}, with_indices=True, num_proc=args.num_proc)
     ds = ds.filter(
