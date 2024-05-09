@@ -33,22 +33,23 @@ from xxhash import xxh3_128_digest
 
 parser = argparse.ArgumentParser()
 # IO Args
-parser.add_argument('--data_files', type=str, required=True)
-parser.add_argument('--output', type=str, required=True)
-parser.add_argument('--num_proc', type=int, default=os.cpu_count())
+parser.add_argument("--data_files", type=str, required=True)
+parser.add_argument("--output", type=str, required=True)
+parser.add_argument("--num_proc", type=int, default=os.cpu_count())
 # Meta Args
-parser.add_argument('--column', type=str, required=True)
-parser.add_argument('--batch_size', type=int, default=10_000)
+parser.add_argument("--column", type=str, required=True)
+parser.add_argument("--batch_size", type=int, default=10_000)
 # MinHash Args
-parser.add_argument('--ngram', type=int, default=5)
-parser.add_argument('--min_length', type=int, default=5)
-parser.add_argument('--seed', type=int, default=42)
-parser.add_argument('--num_perm', type=int, default=250)
-parser.add_argument('--threshold', type=float, default=0.7)
-parser.add_argument('--b', type=int, default=None)
-parser.add_argument('--r', type=int, default=None)
-parser.add_argument('--hash_func', type=str, default="sha1")
-parser.add_argument('--hash_bits', type=int, default=64)
+parser.add_argument("--ngram", type=int, default=5)
+parser.add_argument("--min_length", type=int, default=5)
+parser.add_argument("--ignore_empty", type=bool, default=False)
+parser.add_argument("--seed", type=int, default=42)
+parser.add_argument("--num_perm", type=int, default=250)
+parser.add_argument("--threshold", type=float, default=0.7)
+parser.add_argument("--b", type=int, default=None)
+parser.add_argument("--r", type=int, default=None)
+parser.add_argument("--hash_func", type=str, default="sha1")
+parser.add_argument("--hash_bits", type=int, default=64)
 args = parser.parse_args()
 
 
@@ -147,11 +148,17 @@ def sha1_hash(data: bytes, d: int = 32) -> int:
     Generate a d-bit hash value from the given data.
     """
     if d == 32:
-        return struct.unpack("<I", hashlib.sha1(data, usedforsecurity=False).digest()[:4])[0]
+        return struct.unpack(
+            "<I", hashlib.sha1(data, usedforsecurity=False).digest()[:4]
+        )[0]
     if d == 64:
-        return struct.unpack("<Q", hashlib.sha1(data, usedforsecurity=False).digest()[:8])[0]
+        return struct.unpack(
+            "<Q", hashlib.sha1(data, usedforsecurity=False).digest()[:8]
+        )[0]
     # struct is faster but does not support arbitrary bit lengths
-    return int.from_bytes(hashlib.sha1(data, usedforsecurity=False).digest()[: d // 8], byteorder="little")
+    return int.from_bytes(
+        hashlib.sha1(data, usedforsecurity=False).digest()[: d // 8], byteorder="little"
+    )
 
 
 def xxh3_16hash(data: bytes, seed: int = 0) -> int:
@@ -240,10 +247,13 @@ def embed_func(
     # split content on whitespace (NON_ALPHA regex), tokenize with ngrams(), and join these n-grams into a single space separated string.
     # we then convert to lower case and then bytestrings which is then hashed. Only unique hashed n-grams are left.
     tokens: set[bytes] = {
-        bytes(" ".join(t).lower(), "utf-8") for t in ngrams(NON_ALPHA.split(content.lower()), ngram_size, min_length)
+        bytes(" ".join(t).lower(), "utf-8")
+        for t in ngrams(NON_ALPHA.split(content.lower()), ngram_size, min_length)
     }
 
-    hashvalues: np.ndarray = np.array([hash_func(token) for token in tokens], dtype=dtype).reshape(len(tokens), 1)
+    hashvalues: np.ndarray = np.array(
+        [hash_func(token) for token in tokens], dtype=dtype
+    ).reshape(len(tokens), 1)
     # Permute the hash values to produce new universal hashes
     # Element-wise multiplication with 'hashvalues' and a (non 0 random value) and then adding b
     # Then, take modulo 'MODULO_PRIME' and bitwise_and with 'MAX_HASH' to keep only the necessary bits.
@@ -255,7 +265,9 @@ def embed_func(
     # Originally, byteswap was done for speed. Testing show it has a negligible impact
     # keeping  for backward compatibility, even though theoretically and empirically
     # it doesnt matter if it is there or not. github.com/ekzhu/datasketch/issues/114
-    Hs: list[bytes] = [bytes(hashvalues[start:end].byteswap().data) for start, end in hashranges]
+    Hs: list[bytes] = [
+        bytes(hashvalues[start:end].byteswap().data) for start, end in hashranges
+    ]
     return {SIGNATURE_COLUMN: Hs, INDEX_COLUMN: idx}
 
 
@@ -310,13 +322,22 @@ def main():
     # Loading
     data_files_list = [x.strip() for x in args.data_files.split(",")]
     ds = datasets.load_dataset("json", data_files=data_files_list, split="train")
-    ds = ds.map(lambda x, i: {INDEX_COLUMN: i}, with_indices=True, num_proc=args.num_proc)
+    ds = ds.map(
+        lambda x, i: {INDEX_COLUMN: i}, with_indices=True, num_proc=args.num_proc
+    )
+
+    if args.ignore_empty:
+        ds_rest = ds.filter(lambda x: len(x[args.column].strip()) == 0)
+        ds = ds.filter(lambda x: len(x[args.column].strip()) > 0)
+
     ds = ds.filter(
         lambda x: len(NON_ALPHA.split(x[args.column].lower())) >= args.min_length,
         num_proc=args.num_proc,
     )
 
     LEN_DATASET = len(ds)
+    if args.ignore_empty:
+        LEN_DATASET += len(ds_rest)
 
     # MinHashing
     embedded = ds.map(
@@ -354,7 +375,9 @@ def main():
             contiguous=True,
             writer_batch_size=args.batch_size,
         )
-        for key, Hs in zip(embedded_shard[INDEX_COLUMN], embedded_shard[SIGNATURE_COLUMN]):
+        for key, Hs in zip(
+            embedded_shard[INDEX_COLUMN], embedded_shard[SIGNATURE_COLUMN]
+        ):
             for i, H in enumerate(Hs):
                 HASH_TABLES[i][H].add(key)
 
@@ -387,6 +410,8 @@ def main():
         num_proc=args.num_proc,
         desc="Filtering clusters...",
     )
+    if args.ignore_empty and len(ds_rest) > 0:
+        final_data = datasets.concatenate_datasets([ds_rest, final_data])
 
     # Saving
     final_data = final_data.remove_columns([CLUSTER_COLUMN, INDEX_COLUMN])
