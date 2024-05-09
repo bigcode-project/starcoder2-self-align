@@ -25,6 +25,11 @@ LANGUAGE_MAP = {
     "typescript": "TypeScript",
 }
 
+LLAMA3 = os.getenv("LLAMA3") is not None
+
+if LLAMA3:
+    print("Use Llama-3 prompt format")
+
 
 @dataclass(frozen=True)
 class Args:
@@ -152,7 +157,15 @@ class Example:
     @staticmethod
     def prefix_template(mode: InstructMode) -> str:
         if mode == "I->R":
-            return "<instruction>\n{instruction}\n</instruction>\n\n<response>\n"
+            if LLAMA3:
+                template = (
+                    "### Instruction {index} \n{instruction}\n\n### Response {index}\n"
+                )
+            else:
+                template = (
+                    "<instruction>\n{instruction}\n</instruction>\n\n<response>\n"
+                )
+            return template
         elif mode == "S->C":
             return "### Snippet\n{snippet}\n\n### Concepts\n"
         elif mode == "C->I":
@@ -161,11 +174,22 @@ class Example:
             assert False
 
     def prompt(
-        self, mode: InstructMode, return_in_separate: bool = False
+        self,
+        mode: InstructMode,
+        return_in_separate: bool = False,
+        index: int | None = None,
     ) -> str | tuple[str, str]:
+        assert index is None or (mode == "I->R" and LLAMA3)
         if mode == "I->R":
             kwargs = dict(instruction=self.instruction)
-            suffix = f"{self.response}\n</response>\n\n<tests>\n{self.tests}\n</tests>"
+            if LLAMA3:
+                assert index is not None
+                kwargs["index"] = str(index)
+                suffix = f"{self.response}\n\n### Tests {index}\n{self.tests}"
+            else:
+                suffix = (
+                    f"{self.response}\n</response>\n\n<tests>\n{self.tests}\n</tests>"
+                )
         elif mode == "S->C":
             kwargs = dict(snippet=self.snippet)
             suffix = self.property.concepts_prompt()
@@ -237,11 +261,13 @@ class Fewshot:
         assert len(examples) == num_fewshots
 
         body = "\n\n".join(
-            f"## Example {idx + 1}\n{example.prompt(mode)}"
+            f"## Example {idx + 1}\n{example.prompt(mode, index=idx + 1)}"
             for idx, example in enumerate(examples)
         )
         # content = f"{self.system_prompt}\n\n{body}"
         prefix_template = Example.prefix_template(mode)
+        if mode == "I->R" and LLAMA3:
+            format_args["index"] = str(len(examples) + 1)
         prefix = f"## Example {len(examples) + 1}\n" + prefix_template.format(
             **format_args
         )
@@ -273,6 +299,8 @@ def get_ossinstruct_fewshots() -> Fewshot:
     # "I->R", "E->S", "I->I", "PI->PI", "S->C"
     sys_pattern = r"### System: I->R|### System: C->I|### System: S->C"
     _, i_r, c_i, s_c = list(map(str.strip, re.split(sys_pattern, system_prompt)))
+    if LLAMA3:
+        i_r = f"{i_r}\n\nFor each '## Example' below, make sure you provide a '### Response' and a '### Tests' section."
     # system_prompt = re.split(r"### System: Instruction", system_prompt)[1]
     # instruction_system_prompt, response_system_prompt = system_prompt.split(
     #     "### System: Response"
