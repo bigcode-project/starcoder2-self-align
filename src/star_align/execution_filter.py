@@ -47,6 +47,8 @@ if not platform.uname().system == "Darwin":
 class Args:
     response_paths: list[str]
     result_path: str
+    save_request_errors: bool = False
+    shuffle: bool = field(default=True)
     cache_paths: list[str] = field(default_factory=list)
     max_batched_tasks: int = 10000
     max_workers: int = cpu_count()
@@ -184,6 +186,8 @@ def main():
         print(cleanup_command)
 
     raw_data = load_dataset("json", data_files=args.response_paths, split="train")
+    if args.shuffle:
+        raw_data = raw_data.shuffle()
     if len(args.cache_paths) > 0:
         cached_data = load_dataset("json", data_files=args.cache_paths, split="train")
         cached_dict: dict[str, dict] = {
@@ -252,7 +256,8 @@ def main():
                         continue
                     idx, response, code, passed, output = future_result
                     if output == "Failed to execute program":
-                        continue
+                        if not args.save_request_errors:
+                            continue
                     newdata = form_new_data(
                         item=raw_data[idx],
                         response=response,
