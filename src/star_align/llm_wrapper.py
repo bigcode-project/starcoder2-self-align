@@ -440,6 +440,13 @@ def get_model_context(
             other_kwargs["attn_implementation"] = "flash_attention_2"
         # other_kwargs["use_flash_attention_2"] = True
     # cls = AutoModelWithLMHead if "starcoder2-3b" in model_key else AutoModelForCausalLM
+
+    if "starcoder" in model_key.lower():
+        print("Hack for starcoder")
+        attention_dropout = attention_dropout or 0.0
+        residual_dropout = residual_dropout or 0.0
+        embedding_dropout = embedding_dropout or 0.0
+
     if attention_dropout is not None:
         other_kwargs["attention_dropout"] = attention_dropout
     if residual_dropout is not None:

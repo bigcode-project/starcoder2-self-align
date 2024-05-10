@@ -1,32 +1,36 @@
-import warnings
-
-if __name__ == "__main__":
-    # Deprecate warning
-    warnings.warn(
-        "This module is deprecated. Use `evaluation.text2code_vllm` instead.",
-        DeprecationWarning,
-    )
-    # Press y to continue
-    if input("Do you want to continue? [y/N]: ").lower() != "y":
-        exit()
-
 import itertools
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, TypedDict, cast
+from functools import partial
 from evalplus.data import get_human_eval_plus, get_mbpp_plus, write_jsonl
+
+# from evoeval.data import get_evo_eval
 from tqdm.auto import tqdm
 from transformers import HfArgumentParser
 
 from star_align.llm_wrapper import GenerationConfig, get_model_context
-from star_align.prompt_template import SC2_INSTRUCT_PROMPT as PROMPT_TEMPLATE
-from star_align.utils import chunked
+from star_align.prompt_template import SC2_INSTRUCT_PROMPT
+from star_align.utils import infer_prompt_template
+
+from vllm import LLM, SamplingParams
+
+
+PROMPT_TEMPLATE = SC2_INSTRUCT_PROMPT
 
 
 class Text2CodeProblem(TypedDict):
     id: str
     instruction: str
     response_prefix: str
+
+
+# MBPP_INSTRUCTION = """{nl_description} Your code should satisfy the following assertion:
+# ```python
+# {assertions}
+# ```
+# Enclose your solution in ```python and ```"""
 
 
 def get_mbpp_raw_problems() -> list[dict]:
@@ -67,18 +71,30 @@ def map_humaneval_problem(p: dict) -> Text2CodeProblem:
     id = p["task_id"]
     prompt = p["prompt"]
     prompt = prompt.strip()
-    prompt_header = "Write a Python function to solve the given task:"
+    # try:
+    #     docstring_index = prompt.index('"""')
+    # except ValueError:
+    #     docstring_index = prompt.index("'''")
+    # signature = prompt[:docstring_index].strip()
+    # Instruction
+    # instruction = f"""Complete the implementation of the following function:
+    prompt_header = os.getenv(
+        "PROMPT_HEADER", "Write a Python function to solve the following task:"
+    )
     instruction = f"""{prompt_header}
 ```python
 {prompt}
 ```"""
     prefix = "" if PROMPT_TEMPLATE.endswith("\n") else "\n"
-    prefix_template = "```python\n{prompt}"
+    prefix = ""
+    prefix_template = os.getenv("PREFIX_TEMPLATE", "```python")
     response_prefix = prefix + (
         prefix_template.replace("{prompt}", prompt)
         if "{prompt}" in prefix_template
         else prefix_template
     )
+    # response_prefix = f"""{prefix}```python
+    # {prompt}"""
     return Text2CodeProblem(
         id=id, instruction=instruction, response_prefix=response_prefix
     )
@@ -87,12 +103,23 @@ def map_humaneval_problem(p: dict) -> Text2CodeProblem:
 @dataclass(frozen=True)
 class Args:
     model_key: str
-    dataset: Literal["humaneval", "mbpp"]
+    dataset: Literal[
+        "humaneval",
+        "mbpp",
+        "EvoEval_difficult",
+        "EvoEval_creative",
+        "EvoEval_subtle",
+        "EvoEval_combine",
+        "EvoEval_tool_use",
+        "EvoEval_verbose",
+        "EvoEval_concise",
+    ]
     save_path: str
 
     n_batches: int
     n_problems_per_batch: int
     n_samples_per_problem: int
+    # prompted: bool
 
     model_name_or_path: str | None = None
 
@@ -111,44 +138,51 @@ def main():
     raw_problems = raw_problem_fn()
     problems = list(map(map_problem_fn, raw_problems))
 
-    state = get_model_context(args.model_key, args.model_name_or_path)
+    engine = LLM(args.model_name_or_path or args.model_key)
+    sampling_params = SamplingParams(
+        n=args.n_samples_per_problem,
+        temperature=generation_config.temperature,
+        max_tokens=generation_config.max_new_tokens,
+        top_k=-1,
+        top_p=generation_config.top_p,
+        stop="\n```\n",
+    )
 
-    problems_chunked = list(chunked(list(problems), args.n_problems_per_batch))
-    iter = itertools.product(problems_chunked, range(args.n_batches))
-    n_total = len(problems_chunked) * args.n_batches
+    # state = get_model_context(args.model_key, args.model_name_or_path)
+    try:
+        prompt_template = infer_prompt_template(
+            os.getenv("TOKENIZER") or args.model_name_or_path or args.model_key
+        )
+    except:
+        prompt_template = PROMPT_TEMPLATE
+    # prompt_template = PROMPT_TEMPLATE
+    print("Using:", prompt_template)
 
+    prompts: list[str] = []
+    for problem in problems:
+        prompt = prompt_template.format(
+            instruction=problem["instruction"], response=problem["response_prefix"]
+        )
+        prompts.append(prompt)
+
+    results = engine.generate(prompts, sampling_params)
     Path(args.save_path).write_text("")
-    for problems, batch_idx in tqdm(iter, total=n_total):
-        task_ids = [problem["id"] for problem in problems]
-        prompts = [
-            # TODO: make it generic for all models
-            PROMPT_TEMPLATE.format(
-                instruction=problem["instruction"], response=problem["response_prefix"]
-            )
-            for problem in problems
-        ]
-        print("PROMPT")
-        print(prompts[-1])
-        all_prompts = prompts * args.n_samples_per_problem
-        all_task_ids = task_ids * args.n_samples_per_problem
-        response = state.complete(generation_config, all_prompts, stop_tokens=["\n```"])
-        completions = response.decoded_outputs
-        assert len(problems) <= args.n_problems_per_batch
-        assert len(completions) == len(problems) * args.n_samples_per_problem
-        print("COMPLETION")
-        print(completions[-1])
+    step = 20
+    print_or_not = [idx == 0 or idx % step == 0 for idx in range(len(problems))]
+    for problem, prompt, result, print_debug in zip(
+        problems, prompts, results, print_or_not
+    ):
+        if print_debug:
+            print("[Example Prompt]")
+            print(prompt)
+            print("[Example Completion]")
+            print(result.outputs[0].text)
         samples = [
             dict(
-                task_id=task_id,
-                completion=completion[
-                    : (
-                        index
-                        if (index := completion.find("```")) != -1
-                        else len(completion)
-                    )
-                ],
+                task_id=problem["id"],
+                completion=output.text.split("```python")[-1].split("```")[0],
             )
-            for task_id, completion in zip(all_task_ids, completions)
+            for output in result.outputs
         ]
         write_jsonl(args.save_path, samples, append=True)
 

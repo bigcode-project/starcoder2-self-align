@@ -3,6 +3,7 @@
 import random
 import os
 import ast
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
@@ -11,6 +12,10 @@ from tqdm.auto import tqdm
 from transformers import HfArgumentParser
 
 from star_align.utils import find_code_blocks, write_jsonl, find_codeblock_indices
+
+LLAMA3 = os.getenv("LLAMA3") is not None
+if LLAMA3:
+    print("LLAMA3 mode activated")
 
 
 @dataclass(frozen=True)
@@ -82,6 +87,36 @@ INCOMPLETE_SUBSTRINGS = [
 ]
 
 RESPONSE_TEST_SPLIT = "</response>\n\n<tests>"
+# special handling for llama3 since it has more examples not following the format
+LLAMA3_DEFAULT_TEST_SPLIT = r"### Tests \d\n"
+LLAMA3_ADDITIONAL_PATTERNS = [
+    "We can verify the functionality",
+    "We can verify the correctness",
+    "You can verify the correctness",
+    "You can verify the functionality",
+    "To ensure the correctness",
+    "To verify the correctness",
+    "To test the",
+    "To test this",
+    "To test this",
+    "You can test the",
+    "We can test the",
+    "We can test this",
+    "Now, we'll test",
+]
+
+
+def split_llama3_response_tests(response: str) -> list[str]:
+    splits = re.split(LLAMA3_DEFAULT_TEST_SPLIT, response)
+    if len(splits) > 2:
+        return []
+    if len(splits) == 2:
+        return splits
+    for pattern in LLAMA3_ADDITIONAL_PATTERNS:
+        index = response.find(pattern)
+        if index != -1:
+            return [response[:index], response[index:]]
+    return []
 
 
 def preprocess_and_filter(x: dict) -> dict:
@@ -91,11 +126,14 @@ def preprocess_and_filter(x: dict) -> dict:
         return {k: v for k, v in x.items()} | dict(wrong_format=True, tests="<NO>")
 
     response: str = x["response"]
-    if RESPONSE_TEST_SPLIT not in response:
+    if not LLAMA3 and RESPONSE_TEST_SPLIT not in response:
         return wrong_format(x)
     if any(substring in response.lower() for substring in INCOMPLETE_SUBSTRINGS):
         return wrong_format(x)
-    splits = response.split(RESPONSE_TEST_SPLIT)
+    if LLAMA3:
+        splits = split_llama3_response_tests(response)
+    else:
+        splits = response.split(RESPONSE_TEST_SPLIT)
     if len(splits) != 2:
         return wrong_format(x)
     response, tests = cast(tuple[str, str], tuple(map(str.strip, splits)))
