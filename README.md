@@ -239,13 +239,11 @@ Also, the container connection may be lost during execution. In this case, you c
 <summary>Data sanitization and selection</summary>
 
 ```shell
-python src/star_align/sanitize_data.py \
-    --data_files /path/to/filtered.jsonl* \
-    --output_file /path/to/final_dataset.jsonl \
-    --parse_raw_response True \
-    --passing_only True \
-    --exact_match_dedup True \
-    --data_augmentation False
+# Uncomment to do decontamination
+# export MBPP_PATH="/path/to/mbpp.jsonl"
+# export DS1000_PATH="/path/to/ds1000_data"
+# export DECONTAMINATION=1
+./sanitize.sh /path/to/exec-filtered.jsonl /path/to/sanitized.jsonl
 ```
 
 </details>

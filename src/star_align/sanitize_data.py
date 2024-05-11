@@ -4,9 +4,10 @@ import random
 import os
 import ast
 import re
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import cast, Literal
 from datasets import load_dataset, Dataset
 from tqdm.auto import tqdm
 from transformers import HfArgumentParser
@@ -32,7 +33,8 @@ class Args:
     include_left_failed: bool = field(default=False)
     n_cores: int = field(default=os.cpu_count() or 1)
     diversify_func_names: bool = field(default=True)
-    minihash_dedup: bool = field(default=False)
+    align_with: list[str] = field(default_factory=list)
+    priority: Literal["passed", "failed", "none"] = field(default="none")
     seed: int = field(default=6666)
 
 
@@ -312,6 +314,12 @@ def main():
     args = cast(Args, HfArgumentParser(Args).parse_args_into_dataclasses()[0])
 
     raw_data = load_dataset("json", data_files=args.data_files, split="train")
+    if args.align_with:
+        ref_data = load_dataset("json", data_files=args.align_with, split="train")
+        ref_data_instructions = set(map(lambda x: x["instruction"], ref_data))
+        raw_data = raw_data.filter(
+            lambda x: x["instruction"] in ref_data_instructions, num_proc=args.n_cores
+        )
     print("Raw samples:", len(raw_data))
 
     if args.parse_raw_response:
@@ -338,6 +346,18 @@ def main():
         raw_data = raw_data.shuffle(seed=args.seed)
         if args.include_left_failed:
             failed_data = failed_data.shuffle(seed=args.seed)
+
+    if args.priority != "none":
+        # Sort the examples such that failed/passed are at first
+        raw_data = raw_data.map(
+            map_examples_batched,
+            fn_kwargs=dict(map_one=lambda x: dict(**x, rank=int(x["pass"]))),
+            batched=True,
+            num_proc=args.n_cores,
+        )
+        reverse = args.priority == "passed"
+        raw_data = raw_data.sort(column_names="rank", reverse=reverse)
+        raw_data = raw_data.remove_columns("rank")
 
     def mk_key(instruction: str) -> str:
         return "".join(instruction.split())

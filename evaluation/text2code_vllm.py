@@ -1,16 +1,12 @@
-import itertools
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, TypedDict, cast
-from functools import partial
 from evalplus.data import get_human_eval_plus, get_mbpp_plus, write_jsonl
 
 # from evoeval.data import get_evo_eval
-from tqdm.auto import tqdm
 from transformers import HfArgumentParser
 
-from star_align.llm_wrapper import GenerationConfig, get_model_context
 from star_align.prompt_template import SC2_INSTRUCT_PROMPT
 from star_align.utils import infer_prompt_template
 
@@ -60,7 +56,7 @@ Your code should pass the following assertion:
 ```python
 {assertion}
 ```"""
-    prefix = "" if PROMPT_TEMPLATE.endswith("\n") else "\n"
+    prefix = ""
     response_prefix = f"""{prefix}```python"""
     return Text2CodeProblem(
         id=str(id), instruction=instruction, response_prefix=response_prefix
@@ -85,7 +81,6 @@ def map_humaneval_problem(p: dict) -> Text2CodeProblem:
 ```python
 {prompt}
 ```"""
-    prefix = "" if PROMPT_TEMPLATE.endswith("\n") else "\n"
     prefix = ""
     prefix_template = os.getenv("PREFIX_TEMPLATE", "```python")
     response_prefix = prefix + (
@@ -115,21 +110,15 @@ class Args:
         "EvoEval_concise",
     ]
     save_path: str
-
-    n_batches: int
-    n_problems_per_batch: int
-    n_samples_per_problem: int
-    # prompted: bool
-
+    n_samples_per_problem: int = field(default=1)
+    max_new_tokens: int = field(default=1024)
+    top_p: float = field(default=1.0)
+    temperature: float = field(default=0.0)
     model_name_or_path: str | None = None
 
 
 def main():
-    parser = HfArgumentParser((Args, GenerationConfig))
-    args, generation_config = cast(
-        tuple[Args, GenerationConfig],
-        parser.parse_args_into_dataclasses(),
-    )
+    args = cast(Args, HfArgumentParser(Args).parse_args_into_dataclasses()[0])
     raw_problem_fn, map_problem_fn = (
         (get_humaneval_raw_problems, map_humaneval_problem)
         if args.dataset == "humaneval"
@@ -141,10 +130,10 @@ def main():
     engine = LLM(args.model_name_or_path or args.model_key)
     sampling_params = SamplingParams(
         n=args.n_samples_per_problem,
-        temperature=generation_config.temperature,
-        max_tokens=generation_config.max_new_tokens,
+        temperature=args.temperature,
+        max_tokens=args.max_new_tokens,
         top_k=-1,
-        top_p=generation_config.top_p,
+        top_p=args.top_p,
         stop="\n```\n",
     )
 
