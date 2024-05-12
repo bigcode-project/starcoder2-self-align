@@ -255,7 +255,7 @@ def main():
                     except Exception as e:
                         continue
                     idx, response, code, passed, output = future_result
-                    if output == "Failed to execute program":
+                    if "Failed to execute program" in output:
                         if not args.save_request_errors:
                             continue
                     newdata = form_new_data(
