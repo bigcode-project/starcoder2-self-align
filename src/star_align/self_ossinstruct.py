@@ -14,7 +14,7 @@ from transformers import HfArgumentParser
 
 import star_align
 
-InstructMode = Literal["I->R", "S->C", "C->I"]
+InstructMode = Literal["I->R", "S->C", "C->I", "S->I"]
 
 LANGUAGE_MAP = {
     "cpp": "C++",
@@ -170,6 +170,8 @@ class Example:
             return "### Snippet\n{snippet}\n\n### Concepts\n"
         elif mode == "C->I":
             return "### Properties\n{property}\n\n### Task\n"
+        elif mode == "S->I":
+            return "### Snippet\n{snippet}\n\n### Task\n"
         else:
             assert False
 
@@ -199,6 +201,9 @@ class Example:
             # property_prompt += f"\nnum_words: {num_words}"
             kwargs = dict(property=property_prompt)
             suffix = self.instruction
+        elif mode == "S->I":
+            kwargs = dict(snippet=self.snippet)
+            suffix = self.instruction
         else:
             assert False
         prefix = self.prefix_template(mode).format(**kwargs)
@@ -213,6 +218,7 @@ class Fewshot:
     sys_i_r: str
     sys_c_i: str
     sys_s_c: str
+    sys_s_i: str
 
     examples: list[Example]
 
@@ -297,8 +303,8 @@ def get_ossinstruct_fewshots() -> Fewshot:
     splits = re.split(r"### Example \d+", content)
     system_prompt = splits[0].strip()
     # "I->R", "E->S", "I->I", "PI->PI", "S->C"
-    sys_pattern = r"### System: I->R|### System: C->I|### System: S->C"
-    _, i_r, c_i, s_c = list(map(str.strip, re.split(sys_pattern, system_prompt)))
+    sys_pattern = r"### System: I->R|### System: C->I|### System: S->C|### System: S->I"
+    _, i_r, c_i, s_c, s_i = list(map(str.strip, re.split(sys_pattern, system_prompt)))
     if LLAMA3:
         i_r = f"{i_r}\n\nFor each '## Example' below, make sure you provide a '### Response' and a '### Tests' section."
     # system_prompt = re.split(r"### System: Instruction", system_prompt)[1]
@@ -331,6 +337,7 @@ def get_ossinstruct_fewshots() -> Fewshot:
         sys_i_r=i_r,
         sys_c_i=c_i,
         sys_s_c=s_c,
+        sys_s_i=s_i,
         examples=examples,
     )
 
@@ -343,6 +350,8 @@ def parse_generated_content(content: str, instruct_mode: InstructMode) -> dict |
         return dict(concepts=concepts)
     elif instruct_mode == "C->I":
         return dict(instruction=content.strip())
+    elif instruct_mode == "S->I":
+        return dict(instruction=content.strip())
     else:
         assert False
 
@@ -352,11 +361,11 @@ def build_kwargs(instruct_mode: InstructMode, example: dict) -> dict[str, str]:
     if instruct_mode == "I->R":
         kwargs["instruction"] = example["instruction"]
         # Hack
-        category_index = example["prompt"].rindex("category: ") + len("category: ")
-        category_end = example["prompt"].index("\n", category_index)
-        category = example["prompt"][category_index:category_end].strip()
-        kwargs["category"] = category  # type: ignore
-    elif instruct_mode == "S->C":
+        # category_index = example["prompt"].rindex("category: ") + len("category: ")
+        # category_end = example["prompt"].index("\n", category_index)
+        # category = example["prompt"][category_index:category_end].strip()
+        # kwargs["category"] = category  # type: ignore
+    elif instruct_mode in ["S->C", "S->I"]:
         kwargs["snippet"] = example["seed"]
     elif instruct_mode == "C->I":
         lang = example.get("data_dir", "dummy_key_not_in_example")

@@ -24,6 +24,7 @@ class Args:
     data_files: list[str]
     output_file: str
     shuffle: bool = field(default=True)
+    remove_strange: bool = field(default=True)
     parse_raw_response: bool = field(default=True)
     passing_only: bool = field(default=True)
     data_augmentation: bool = field(default=False)
@@ -369,6 +370,10 @@ def main():
 
         def iterate(dataset: Dataset):
             for d in tqdm(dataset):
+                if args.remove_strange:
+                    # NOTE: newly added
+                    if len(d["instruction"].split()) > 200:
+                        continue
                 key_i, key_r = mk_key(d["instruction"]), mk_key(d["response"])
                 if key_i in seen_keys or key_r in seen_keys:
                     continue

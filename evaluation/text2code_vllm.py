@@ -4,20 +4,17 @@ from pathlib import Path
 from typing import Literal, TypedDict, cast
 from evalplus.data import get_human_eval_plus, get_mbpp_plus, write_jsonl
 
-# from evoeval.data import get_evo_eval
+from evoeval.data import get_evo_eval
 from transformers import HfArgumentParser
 
-from star_align.prompt_template import SC2_INSTRUCT_PROMPT
-from star_align.utils import infer_prompt_template
+from star_align.utils import infer_prompt_template, is_base_model
 
 from vllm import LLM, SamplingParams
 
 
-PROMPT_TEMPLATE = SC2_INSTRUCT_PROMPT
-
-
 class Text2CodeProblem(TypedDict):
     id: str
+    prompt: str
     instruction: str
     response_prefix: str
 
@@ -39,6 +36,14 @@ def get_humaneval_raw_problems() -> list[dict]:
     return list(problems.values())
 
 
+def get_evoeval_raw_problems(dataset: str):
+    def get_raw_problems() -> list[dict]:
+        problems = get_evo_eval(dataset)
+        return list(problems.values())
+
+    return get_raw_problems
+
+
 def map_mbpp_problem(p: dict) -> Text2CodeProblem:
     id = p["task_id"]
     prompt = p["prompt"]
@@ -52,14 +57,16 @@ def map_mbpp_problem(p: dict) -> Text2CodeProblem:
     assertion = prompt[assert_index:].strip()
     instruction = f"""{instruction}
 
-Your code should pass the following assertion:
 ```python
 {assertion}
 ```"""
     prefix = ""
     response_prefix = f"""{prefix}```python"""
     return Text2CodeProblem(
-        id=str(id), instruction=instruction, response_prefix=response_prefix
+        id=str(id),
+        prompt=prompt,
+        instruction=instruction,
+        response_prefix=response_prefix,
     )
 
 
@@ -91,7 +98,10 @@ def map_humaneval_problem(p: dict) -> Text2CodeProblem:
     # response_prefix = f"""{prefix}```python
     # {prompt}"""
     return Text2CodeProblem(
-        id=id, instruction=instruction, response_prefix=response_prefix
+        id=id,
+        prompt=prompt,
+        instruction=instruction,
+        response_prefix=response_prefix,
     )
 
 
@@ -120,44 +130,69 @@ class Args:
 def main():
     args = cast(Args, HfArgumentParser(Args).parse_args_into_dataclasses()[0])
     raw_problem_fn, map_problem_fn = (
-        (get_humaneval_raw_problems, map_humaneval_problem)
-        if args.dataset == "humaneval"
-        else (get_mbpp_raw_problems, map_mbpp_problem)
+        (get_evoeval_raw_problems(args.dataset), map_humaneval_problem)
+        if args.dataset.startswith("EvoEval_")
+        else (
+            (get_humaneval_raw_problems, map_humaneval_problem)
+            if args.dataset == "humaneval"
+            else (get_mbpp_raw_problems, map_mbpp_problem)
+        )
     )
     raw_problems = raw_problem_fn()
     problems = list(map(map_problem_fn, raw_problems))
 
-    engine = LLM(args.model_name_or_path or args.model_key)
+    engine = LLM(
+        tokenizer=args.model_key, model=args.model_name_or_path or args.model_key
+    )
+
+    base_model_prompt = is_base_model(args.model_key)
+
+    stop: str | list[str] = (
+        "\n```\n"
+        if not base_model_prompt
+        else ["\ndef ", "\nclass ", "\nimport ", "\nfrom ", "\nassert ", "\n# "]
+    )
     sampling_params = SamplingParams(
         n=args.n_samples_per_problem,
         temperature=args.temperature,
         max_tokens=args.max_new_tokens,
         top_k=-1,
         top_p=args.top_p,
-        stop="\n```\n",
+        stop=stop,
     )
 
-    # state = get_model_context(args.model_key, args.model_name_or_path)
-    try:
+    if base_model_prompt:
+        print("Base model")
+    else:
         prompt_template = infer_prompt_template(
             os.getenv("TOKENIZER") or args.model_name_or_path or args.model_key
         )
-    except:
-        prompt_template = PROMPT_TEMPLATE
-    # prompt_template = PROMPT_TEMPLATE
-    print("Using:", prompt_template)
+        # prompt_template = PROMPT_TEMPLATE
+        print("Using:", prompt_template)
 
     prompts: list[str] = []
     for problem in problems:
-        prompt = prompt_template.format(
-            instruction=problem["instruction"], response=problem["response_prefix"]
-        )
+        if not base_model_prompt:
+            prompt = prompt_template.format(
+                instruction=problem["instruction"], response=problem["response_prefix"]
+            )
+        else:
+            prompt = problem["prompt"]
         prompts.append(prompt)
 
     results = engine.generate(prompts, sampling_params)
     Path(args.save_path).write_text("")
+
     step = 20
     print_or_not = [idx == 0 or idx % step == 0 for idx in range(len(problems))]
+
+    def sanitize(output: str) -> str:
+        if not base_model_prompt:
+            return output.split("```python")[-1].split("```")[0]
+        for s in stop:
+            output = output.rsplit(s, 1)[0]
+        return output
+
     for problem, prompt, result, print_debug in zip(
         problems, prompts, results, print_or_not
     ):
@@ -169,7 +204,7 @@ def main():
         samples = [
             dict(
                 task_id=problem["id"],
-                completion=output.text.split("```python")[-1].split("```")[0],
+                completion=sanitize(output.text),
             )
             for output in result.outputs
         ]

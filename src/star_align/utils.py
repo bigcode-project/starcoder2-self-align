@@ -192,17 +192,52 @@ def find_codeblock_indices(
     return all_indices
 
 
+DEFAULT_TEMPLATE = """\
+### Instruction
+{instruction}
+
+### Response
+{response}"""
+
+
+def is_base_model(tokenizer_name: str) -> bool:
+    from transformers import AutoTokenizer
+
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    return tokenizer.chat_template is None and "octocoder" not in tokenizer_name
+
+
+OCTOCODER_CHAT_TEMPLATE = """\
+{%- for message in messages %}
+    {%- if message['role'] == 'system' %}
+        {{ raise_exception('System messages are not allowed in this template.') }}
+    {%- else %}
+        {%- if message['role'] == 'user' %}
+{{'Question: ' + message['content'] + '\n\n'}}
+        {%- else %}
+{{'Answer: ' + message['content'] + '\n\n'}}
+        {%- endif %}
+    {%- endif %}
+{%- endfor %}
+{{'Question: '}}"""
+
+
 def infer_prompt_template(tokenizer_name: str) -> str:
     from transformers import AutoTokenizer
 
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    template = tokenizer.apply_chat_template(
-        [
-            {"role": "user", "content": "{instruction}"},
-            {"role": "assistant", "content": "{response}"},
-        ],
-        tokenize=False,
-    )
+    if "octocoder" in tokenizer_name:
+        tokenizer.chat_template = OCTOCODER_CHAT_TEMPLATE
+    if tokenizer.chat_template is not None:
+        template = tokenizer.apply_chat_template(
+            [
+                {"role": "user", "content": "{instruction}"},
+                {"role": "assistant", "content": "{response}"},
+            ],
+            tokenize=False,
+        )
+    else:
+        template = DEFAULT_TEMPLATE
     end_index = template.rindex("{response}") + len("{response}")
     template = template[:end_index]
     return template

@@ -14,6 +14,9 @@ Design the tasks so that the relevant concepts emerge naturally as the most appr
 ### System: S->C
 Extract key programming concepts from the provided code snippet. Programming concepts refer to the foundational principles and techniques used in programming, which are crucial for developers to master. List these concepts in a comma-separated format.
 
+### System: S->I
+Gain inspiration from the given code snippets and create a series of independent coding tasks that are original, distinct, diverse, and high-quality, fostering logical thinking.
+
 ### Example 1
 [Code]
     value = int(round((value - prev) * 1e5))
