@@ -411,9 +411,12 @@ async def main():
         num_proc=star_align.utils.N_CORES,
     )
     id_key = "seed"
-    assert len(set(d[id_key] for d in raw_dataset)) == len(
-        raw_dataset
-    ), "Duplicate seeds appear in the dataset"
+    if os.getenv("IGNORE_SEED_CHECK") is None:
+        assert len(set(d[id_key] for d in raw_dataset)) == len(
+            raw_dataset
+        ), "Duplicate seeds appear in the dataset"
+    else:
+        print("[Warning] Ignoring seed check")
 
     # Every run should produce the same data as long as the default params are not changed
     start_index = args.seed_code_start_index

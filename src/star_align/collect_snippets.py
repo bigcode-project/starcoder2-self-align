@@ -21,25 +21,25 @@ class Args:
     data_dirs: list[str]
     data_mix_weights: list[float]
 
-    max_seeds_to_collect: int = field(default=37340)
+    max_seeds_to_collect: int = field(default=100000000)
     continue_from: str | None = field(default=None)
 
     # Keep the following arguments unchanged for reproducibility
     seed: int = field(default=976)
 
     min_lines: int = field(default=5)
-    max_lines: int = field(default=25)
+    max_lines: int = field(default=30)
     min_doc_lines: int = field(default=10)
-    max_doc_lines: int = field(default=1000)
+    max_doc_lines: int = field(default=5000)
     max_avg_chars_per_line: int = field(default=80)
     # max_fragments: int = field(default=3)
     chunk_size: int = field(default=1000)
     # A small value lets one document be used by multiple seeds
-    content_chunk_lines: int = field(default=99999999999)
+    content_chunk_lines: int = field(default=100)
 
     dataset_name: str = field(default="bigcode/starcoderdata")
     data_files: list[str] | None = field(default=None)
-    max_considered_data: int | None = field(default=200000)
+    max_considered_data: int | None = field(default=500000000)
 
     collect_function: bool = field(default=False)
     max_nodes_to_traverse: int = field(default=20000)
@@ -576,7 +576,7 @@ def main():
         def get_seed_text(seed: str) -> str:
             return "".join(seed.split())
 
-        pbar = tqdm(total=args.max_seeds_to_collect)
+        pbar = tqdm(total=min(args.max_seeds_to_collect, len(dataset)))
         for example in dataset:
             if n_success >= args.max_seeds_to_collect:
                 break
