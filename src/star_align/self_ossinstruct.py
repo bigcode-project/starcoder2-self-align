@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, cast
-
+from openai.types import CompletionChoice, Completion
 from datasets import Dataset, load_dataset
 from tqdm.auto import tqdm
 from transformers import HfArgumentParser
@@ -29,6 +29,24 @@ LLAMA3 = os.getenv("LLAMA3") is not None
 
 if LLAMA3:
     print("Use Llama-3 prompt format")
+
+
+def flatten_openai_responses(responses: list[Completion]) -> list[Completion]:
+    # assert all(len(response.choices) == chunk_size for response in responses)
+    completions = list[Completion]()
+    for idx, response in enumerate(responses):
+        completions.extend(
+            Completion(
+                id=f"{response.id}:{idx}",
+                created=response.created,
+                object=response.object,
+                model=response.model,
+                choices=[choice],
+                system_fingerprint=response.system_fingerprint,
+            )
+            for choice in response.choices
+        )
+    return completions
 
 
 @dataclass(frozen=True)
@@ -53,6 +71,15 @@ class Args:
     prompting_mode: Literal["chat", "completion"] = field(default="completion")
     num_fewshots: int = field(default=8)
 
+    async_micro_batch_size: int = field(
+        default=1,
+        metadata={
+            "help": "Number of prompts to batch in a single async request."
+            "Won't be effective if `use_vllm_server` is False."
+            "It should be divisible by `num_batched_requests` for a balance load"
+            "if multiple vllm instances are served through a round-robin load balancer."
+        },
+    )
     num_batched_requests: int = field(
         default=1, metadata={"help": "Number of requests to send concurrently"}
     )
@@ -401,6 +428,12 @@ def get_readable_prefix(instruct_mode: InstructMode, example: dict) -> str:
 
 async def main():
     args = cast(Args, HfArgumentParser(Args).parse_args_into_dataclasses()[0])
+    # Sanity check
+    assert args.num_batched_requests % args.async_micro_batch_size == 0
+    if args.async_micro_batch_size > 1:
+        assert (
+            args.num_sample_per_request == 1
+        ), "Only support 1 sample with batched async requests"
     if args.use_vllm_server:
         openai_client = star_align.utils.OpenAIClient()
 
@@ -468,7 +501,6 @@ async def main():
 
     if not args.use_vllm_server:
         from vllm import LLM, SamplingParams, RequestOutput
-        from openai.types import CompletionChoice, Completion
         import torch
 
         engine = LLM(args.model, tensor_parallel_size=torch.cuda.device_count())
@@ -541,7 +573,39 @@ async def main():
                 if args.prompting_mode == "chat"
                 else openai_client.dispatch_completions
             )
-            responses = await dispatch_requests(request_params, delay=args.delay)
+            if args.async_micro_batch_size == 1:
+                responses = await dispatch_requests(
+                    request_params, delay=args.delay
+                )
+            else:
+                # Construct micro batches for async requests
+                assert args.num_sample_per_request == 1
+                request_params_batched: list[dict[str, Any]] = []
+                request_params_chunks = star_align.utils.chunked(
+                    request_params, args.async_micro_batch_size
+                )
+                for request_params_chunk in request_params_chunks:
+                    request_param = {
+                        k: v
+                        for k, v in request_params_chunk[0].items()
+                        if k != "prompt"
+                    }
+                    request_param["prompt"] = [
+                        req["prompt"] for req in request_params_chunk
+                    ]
+                    request_params_batched.append(request_param)
+                n_async_chunks = (
+                    args.num_batched_requests // args.async_micro_batch_size
+                )
+                assert len(request_params_batched) == n_async_chunks
+                print(
+                    f"Ready to make {len(request_params_batched)} batched async requests"
+                )
+                responses_batched = await dispatch_requests(
+                    request_params_batched, delay=args.delay
+                )
+                responses = flatten_openai_responses(responses_batched)
+                assert len(responses) == len(examples)
         else:
             stop = ["## Example"]
             if args.instruct_mode == "I->R":
