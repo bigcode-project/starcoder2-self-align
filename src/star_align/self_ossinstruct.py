@@ -574,9 +574,7 @@ async def main():
                 else openai_client.dispatch_completions
             )
             if args.async_micro_batch_size == 1:
-                responses = await dispatch_requests(
-                    request_params, delay=args.delay
-                )
+                responses = await dispatch_requests(request_params, delay=args.delay)
             else:
                 # Construct micro batches for async requests
                 assert args.num_sample_per_request == 1
@@ -597,7 +595,10 @@ async def main():
                 n_async_chunks = (
                     args.num_batched_requests // args.async_micro_batch_size
                 )
-                assert len(request_params_batched) == n_async_chunks
+                assert len(request_params_batched) in [
+                    n_async_chunks,
+                    n_async_chunks + 1,
+                ], (request_params_batched, n_async_chunks)
                 print(
                     f"Ready to make {len(request_params_batched)} batched async requests"
                 )
