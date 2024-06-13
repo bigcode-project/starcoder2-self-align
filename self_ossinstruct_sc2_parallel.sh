@@ -34,7 +34,7 @@ function killall_pids {
         kill $pid
     done
 }
-trap killall_pids EXIT SIGINT SIGTERM
+trap killall_pids SIGINT SIGTERM
 
 for (( GPU_ID=0; GPU_ID<$NUM_GPUS; GPU_ID++ ))
 do
