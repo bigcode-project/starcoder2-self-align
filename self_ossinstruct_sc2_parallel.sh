@@ -69,3 +69,22 @@ do
 done
 
 wait
+
+# dir for final res
+FINAL="$1/final"
+FINAL_FILE="$FINAL/aggregated-${MODE}.jsonl"
+
+echo "All processes finished. Aggregating results... to $FINAL_FILE"
+
+# aggregate!
+mkdir -p $FINAL
+touch $FINAL_FILE
+
+for (( GPU_ID=0; GPU_ID<$NUM_GPUS; GPU_ID++ ))
+do
+  # get first file for dir
+  FILE=$(ls $1/$GPU_ID | head -n 1)
+  cat $1/$GPU_ID/$FILE >> $FINAL_FILE
+done
+
+echo "Done!"
