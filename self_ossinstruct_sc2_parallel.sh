@@ -70,6 +70,11 @@ done
 
 wait
 
+if [[ $? -ne 0 ]]; then
+    echo "Error in one of the processes. Exiting... Check logs for more details."
+    exit 1
+fi
+
 # dir for final res
 FINAL="$1/final"
 FINAL_FILE="$FINAL/aggregated-${MODE}.jsonl"
