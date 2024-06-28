@@ -50,6 +50,7 @@ class Args:
     save_request_errors: bool = False
     shuffle: bool = field(default=True)
     cache_paths: list[str] = field(default_factory=list)
+    load_pass_only_cache: bool = field(default=False)
     max_batched_tasks: int = 10000
     max_workers: int = cpu_count()
     container_server: str | None = None
@@ -192,9 +193,12 @@ def main():
         raw_data = raw_data.shuffle()
     if len(args.cache_paths) > 0:
         cached_data = load_dataset("json", data_files=args.cache_paths, split="train")
-        cached_dict: dict[str, dict] = {
-            item["extracted_code"]: item for item in cached_data
-        }
+        if args.load_pass_only_cache:
+            cached_dict: dict[str, dict] = {
+                item["extracted_code"]: item for item in cached_data if item["pass"]
+            }
+        else:
+            cached_dict = {item["extracted_code"]: item for item in cached_data}
     else:
         cached_dict = {}
 
